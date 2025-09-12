@@ -105,24 +105,28 @@ export function convertToExtendedResult(
   originalInput: ExtendedAlgoInput
 ): ExtendedAlgoResult {
   return {
-    containers: result.containers.map((container, containerIndex) => ({
-      ...container,
-      orderBoxNumber: originalInput.containers[containerIndex]?.orderBoxNumber || "",
-      containerNetWeight: originalInput.containers[containerIndex]?.containerNetWeight || 0,
-      containerGrossWeight: originalInput.containers[containerIndex]?.containerGrossWeight || 0,
-      items: container.items.map((item) => {
-        // 根据item.id找到原始输入中对应的物品
-        const originalItem = originalInput.items.find(inputItem => inputItem.id === item.id);
-        return {
-          ...item,
-          oeNumber: originalItem?.oeNumber || "",
-          productNetWeight: originalItem?.productNetWeight || 0,
-          productGrossWeight: originalItem?.productGrossWeight || 0,
-          boxNetWeight: originalItem?.boxNetWeight || 0,
-          qty: originalItem?.qty || 0
-        };
-      })
-    })),
+    containers: result.containers.map((container) => {
+      // 找到对应的原始容器输入（所有结果容器都来自第一个输入容器）
+      const originalContainer = originalInput.containers[0];
+      return {
+        ...container,
+        orderBoxNumber: originalContainer?.orderBoxNumber || "",
+        containerNetWeight: originalContainer?.containerNetWeight || 0,
+        containerGrossWeight: originalContainer?.containerGrossWeight || 0,
+        items: container.items.map((item) => {
+          // 根据item.id找到原始输入中对应的物品
+          const originalItem = originalInput.items.find(inputItem => inputItem.id === item.id);
+          return {
+            ...item,
+            oeNumber: originalItem?.oeNumber || "",
+            productNetWeight: originalItem?.productNetWeight || 0,
+            productGrossWeight: originalItem?.productGrossWeight || 0,
+            boxNetWeight: originalItem?.boxNetWeight || 0,
+            qty: originalItem?.qty || 0
+          };
+        })
+      };
+    }),
     unpacked_items: result.unpacked_items.map((item) => {
       const originalItem = originalInput.items.find(inputItem => inputItem.id === item.id);
       return {

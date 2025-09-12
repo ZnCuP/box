@@ -1,5 +1,5 @@
 // 主应用组件 - 3D装箱可视化
-import { Box, Button, VStack, Flex } from "@chakra-ui/react";
+import { Box, Button, Flex } from "@chakra-ui/react";
 import { Canvas } from "@react-three/fiber";
 import { Center, Environment, OrbitControls, Edges } from "@react-three/drei";
 import {
@@ -91,6 +91,8 @@ export default function App() {
       alert("请先进行装箱计算");
       return;
     }
+    
+
 
     // 只处理实际有物品的容器
     const containersWithItems = extendedResult.containers.filter(container => container.items && container.items.length > 0);
@@ -99,29 +101,41 @@ export default function App() {
     const workbook = XLSX.utils.book_new();
     
     containersWithItems.forEach((container, containerIndex) => {
-      // 计算容器中物品的总数量（每个item代表一个实际放置的物品）
-      const totalQty = container.items.length;
-      
-      // 获取第一个物品的信息作为代表（假设同一容器中的物品类型相同）
-      const firstItem = container.items[0];
-      
       // 获取原始容器输入数据（显示原始尺寸，不是减去厚度后的尺寸）
-      const originalContainer = originalInput.containers[containerIndex];
+      const originalContainer = originalInput.containers[0];
       
-      // 表格数据 - 每个容器只有一行
-      const tableData = [{
-        "单号箱号": container.orderBoxNumber || "",
-        "标签": firstItem?.id || "",
-        "OE号": firstItem?.oeNumber || "",
-        "产品净重/g": firstItem?.productNetWeight || 0,
-        "产品毛重/g": firstItem?.productGrossWeight || 0,
-        "盒子净重/g": firstItem?.boxNetWeight || 0,
-        "盒子规格/cm": firstItem ? `${firstItem.dim.length}×${firstItem.dim.width}×${firstItem.dim.height}` : "",
-        "数量/个": totalQty,
-        "外箱净重/kg": container.containerNetWeight || 0,
-        "外箱毛重/kg": container.containerGrossWeight || 0,
-        "外箱规格/cm": originalContainer ? `${originalContainer.dim[0]}×${originalContainer.dim[1]}×${originalContainer.dim[2]}` : `${container.dim.length}×${container.dim.width}×${container.dim.height}`
-      }];
+      // 按物品类型分组统计
+      const itemGroups = new Map<string, {
+        item: any;
+        count: number;
+      }>();
+      
+      container.items.forEach(item => {
+        const key = item.id;
+        if (itemGroups.has(key)) {
+          itemGroups.get(key)!.count++;
+        } else {
+          itemGroups.set(key, {
+            item: item,
+            count: 1
+          });
+        }
+      });
+      
+      // 为每种物品类型创建一行数据
+      const tableData = Array.from(itemGroups.values()).map((group, index) => ({
+        "单号箱号": index === 0 ? (container.orderBoxNumber || "") : "",
+        "标签": group.item?.id || "",
+        "OE号": group.item?.oeNumber || "",
+        "产品净重/g": group.item?.productNetWeight || 0,
+        "产品毛重/g": group.item?.productGrossWeight || 0,
+        "盒子净重/g": group.item?.boxNetWeight || 0,
+        "盒子规格/cm": group.item ? `${group.item.dim.length}×${group.item.dim.width}×${group.item.dim.height}` : "",
+        "数量/个": group.count,
+        "外箱净重/kg": index === 0 ? (container.containerNetWeight || 0) : "",
+        "外箱毛重/kg": index === 0 ? (container.containerGrossWeight || 0) : "",
+        "外箱规格/cm": index === 0 ? (originalContainer ? `${originalContainer.dim[0]}×${originalContainer.dim[1]}×${originalContainer.dim[2]}` : `${container.dim.length}×${container.dim.width}×${container.dim.height}`) : ""
+      }));
 
       // 创建工作表
       const worksheet = XLSX.utils.json_to_sheet(tableData);

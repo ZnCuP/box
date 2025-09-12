@@ -189,6 +189,8 @@ export class Container {
   public maxWeight: number; // 最大重量 (kg)
   public maxQuantity: number; // 最大数量
   public containerNetWeight: number; // 容器净重 (kg)
+  public orderBoxNumber: string; // 单号箱号
+  public containerGrossWeight: number; // 容器毛重 (kg)
 
   constructor(
     public id: string,
@@ -197,7 +199,9 @@ export class Container {
     packingMethod: string = 'space',
     maxWeight: number = 0,
     maxQuantity: number = 0,
-    containerNetWeight: number = 0
+    containerNetWeight: number = 0,
+    orderBoxNumber: string = '',
+    containerGrossWeight: number = 0
   ) {
     this.items = [];
     this.labelOrientation = labelOrientation;
@@ -205,14 +209,16 @@ export class Container {
     this.maxWeight = maxWeight;
     this.maxQuantity = maxQuantity;
     this.containerNetWeight = containerNetWeight;
+    this.orderBoxNumber = orderBoxNumber;
+    this.containerGrossWeight = containerGrossWeight;
   }
 
-  static new(id: string, dim: Vector3, labelOrientation: LabelOrientation = 'auto', packingMethod: string = 'space', maxWeight: number = 0, maxQuantity: number = 0, containerNetWeight: number = 0): Container {
-    return new Container(id, dim, labelOrientation, packingMethod, maxWeight, maxQuantity, containerNetWeight);
+  static new(id: string, dim: Vector3, labelOrientation: LabelOrientation = 'auto', packingMethod: string = 'space', maxWeight: number = 0, maxQuantity: number = 0, containerNetWeight: number = 0, orderBoxNumber: string = '', containerGrossWeight: number = 0): Container {
+    return new Container(id, dim, labelOrientation, packingMethod, maxWeight, maxQuantity, containerNetWeight, orderBoxNumber, containerGrossWeight);
   }
 
   clone(): Container {
-    const cloned = new Container(this.id, this.dim.clone(), this.labelOrientation, this.packingMethod, this.maxWeight, this.maxQuantity, this.containerNetWeight);
+    const cloned = new Container(this.id, this.dim.clone(), this.labelOrientation, this.packingMethod, this.maxWeight, this.maxQuantity, this.containerNetWeight, this.orderBoxNumber, this.containerGrossWeight);
     cloned.items = this.items.map(item => item.clone());
     return cloned;
   }
@@ -325,6 +331,8 @@ export interface AlgoContainerInput {
   maxWeight?: number; // 最大重量 (kg)
   maxQuantity?: number; // 最大数量
   containerNetWeight?: number; // 容器净重 (kg)
+  orderBoxNumber?: string; // 单号箱号
+  containerGrossWeight?: number; // 容器毛重 (kg)
 }
 
 export interface AlgoInput {
@@ -357,7 +365,9 @@ export class PackingAlgorithm {
         c.packingMethod || 'space',
         c.maxWeight || 0,
         c.maxQuantity || 0,
-        c.containerNetWeight || 0
+        c.containerNetWeight || 0,
+        c.orderBoxNumber || '',
+        c.containerGrossWeight || 0
       ),
       c.qty
     ));
