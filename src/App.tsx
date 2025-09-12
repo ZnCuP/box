@@ -1,5 +1,5 @@
 // 主应用组件 - 3D装箱可视化
-import { Box, Button, VStack } from "@chakra-ui/react";
+import { Box, Button, VStack, Flex } from "@chakra-ui/react";
 import { Canvas } from "@react-three/fiber";
 import { Center, Environment, OrbitControls, Edges } from "@react-three/drei";
 import {
@@ -12,7 +12,9 @@ import { useMount } from "./hooks/useMount";
 import { useContext, useMemo, useRef, useState } from "react";
 import { SAMPLE_RESULT } from "./constant/sample";
 import { AppContext } from "./components/AppProvider";
-import Sidebar from "./components/Sidebar";
+import ContainerFields from "./components/ContainerFields";
+import BoxFields from "./components/BoxFields";
+import { useForm } from "react-hook-form";
 import * as XLSX from 'xlsx';
 
 export default function App() {
@@ -29,7 +31,41 @@ export default function App() {
   const originalInputRef = useRef<ExtendedAlgoInput | undefined>();
   // Worker引用
   const workerRef = useRef<Worker>();
-
+  
+  // 侧边栏显示状态
+  const [leftSidebarVisible, setLeftSidebarVisible] = useState(true);
+  const [rightSidebarVisible, setRightSidebarVisible] = useState(true);
+  
+  // 表单控制
+  const { control, handleSubmit } = useForm<ExtendedAlgoInput>({
+    defaultValues: {
+      containers: [
+        {
+          id: "容器 1",
+          qty: 1,
+          dim: [100, 100, 100],
+          orderBoxNumber: "",
+          containerNetWeight: 0,
+          containerGrossWeight: 0,
+          labelOrientation: "auto",
+          packingMethod: "space",
+        },
+      ],
+      items: [
+        {
+          id: "",
+          qty: 5,
+          dim: [10, 10, 30],
+          thickness: 0,
+          oeNumber: "",
+          productNetWeight: 0,
+          productGrossWeight: 0,
+          boxNetWeight: 0,
+        },
+      ],
+    },
+  });
+  
   // 执行装箱计算
   const workerPack = (input: ExtendedAlgoInput) => {
     setResult(undefined);
@@ -41,6 +77,8 @@ export default function App() {
     const convertedInput = convertToAlgoInput(input);
     workerRef.current?.postMessage({ type: "pack", input: convertedInput });
   };
+  
+  const onSubmit = handleSubmit(workerPack);
 
   // 导出Excel功能
   const exportToExcel = () => {
@@ -132,25 +170,124 @@ export default function App() {
     }, 0) || 0;
 
   return (
-    <>
-      <VStack spacing={0} align="stretch">
-        <Sidebar
-          isPackingReady={isWorkerReady}
-          isLoading={isPacking}
-          onPack={workerPack}
-        />
-        <Box p={4} bg="gray.50" borderTop="1px" borderColor="gray.200">
-          <Button
-             colorScheme="green"
-             onClick={exportToExcel}
-             isDisabled={!extendedResult || !extendedResult.containers}
-             size="sm"
-           >
-             导出PDF
-           </Button>
+    <Flex h="100svh">
+      {/* 左侧容器面板 */}
+      <Flex
+        flexDir="column"
+        w="320px"
+        h="100%"
+        bg="rgb(42 45 56 / 100%)"
+        p="2"
+        borderRadius="lg"
+        position="fixed"
+        top="0"
+        left={leftSidebarVisible ? "0" : "-300px"}
+        zIndex={9}
+        transition="left 0.3s ease-in-out"
+      >
+        <Box flex="1" overflowY="scroll">
+          <ContainerFields control={control} />
         </Box>
-      </VStack>
-      <Box w="100svw" h="100svh" position="absolute" top={0} left={0} zIndex={-1}>
+        <Box w="full" p="2">
+          <Button
+            size="xs"
+            w="full"
+            colorScheme="purple"
+            onClick={onSubmit}
+            isLoading={isPacking}
+            isDisabled={!isWorkerReady}
+          >
+            开始装箱
+          </Button>
+        </Box>
+      </Flex>
+      
+      {/* 左侧展开/收缩按钮 */}
+       <Button
+         position="fixed"
+         top="50%"
+         left={leftSidebarVisible ? "320px" : "0px"}
+         transform="translateY(-50%)"
+         zIndex={10}
+         size="sm"
+         colorScheme="blue"
+         variant="solid"
+         borderRadius="0 md md 0"
+         onClick={() => setLeftSidebarVisible(!leftSidebarVisible)}
+         transition="left 0.3s ease-in-out"
+         px="2"
+         py="4"
+         bg="blue.500"
+         _hover={{ bg: "blue.600" }}
+         color="white"
+         boxShadow="lg"
+       >
+         {leftSidebarVisible ? "◀" : "▶"}
+       </Button>
+      
+      {/* 右侧物品面板 */}
+       <Flex
+         flexDir="column"
+         w="320px"
+         h="100%"
+         bg="rgb(42 45 56 / 100%)"
+         p="2"
+         borderRadius="lg"
+         position="fixed"
+         top="0"
+         right={rightSidebarVisible ? "0" : "-300px"}
+         zIndex={9}
+         transition="right 0.3s ease-in-out"
+       >
+         <Box flex="1" overflowY="scroll">
+           <BoxFields control={control} />
+         </Box>
+       </Flex>
+       
+       {/* 右侧展开/收缩按钮 */}
+        <Button
+          position="fixed"
+          top="50%"
+          right={rightSidebarVisible ? "320px" : "0px"}
+          transform="translateY(-50%)"
+          zIndex={10}
+          size="sm"
+          colorScheme="orange"
+          variant="solid"
+          borderRadius="md 0 0 md"
+          onClick={() => setRightSidebarVisible(!rightSidebarVisible)}
+          transition="right 0.3s ease-in-out"
+          px="2"
+          py="4"
+          bg="orange.500"
+          _hover={{ bg: "orange.600" }}
+          color="white"
+          boxShadow="lg"
+        >
+          {rightSidebarVisible ? "▶" : "◀"}
+        </Button>
+      
+      <Button
+        position="fixed"
+        top="2"
+        left="50%"
+        transform="translateX(-50%)"
+        size="xs"
+        colorScheme="blue"
+        onClick={exportToExcel}
+        zIndex={10}
+      >
+        导出Excel
+      </Button>
+      
+      {/* 中间3D画布 */}
+        <Box 
+          w="100%" 
+          h="100%" 
+          ml={leftSidebarVisible ? "320px" : "0px"}
+          mr={rightSidebarVisible ? "320px" : "0px"}
+          transition="margin 0.3s ease-in-out"
+        >
         <Canvas shadows camera={{ position: [0, 0, maxZ + 80], fov: 50 }}>
           {maxZ === 0 ? null : (
             <Center>
@@ -173,7 +310,7 @@ export default function App() {
           <OrbitControls enablePan={true} enableZoom={true} />
         </Canvas>
       </Box>
-    </>
+    </Flex>
   );
 }
 

@@ -17,6 +17,9 @@ export type ExtendedItemInput = {
 // 标签面朝向类型
 export type LabelOrientation = 'auto' | 'length_width_up' | 'length_height_up' | 'width_height_up';
 
+// 装箱方式类型
+export type PackingMethod = 'space' | 'weight' | 'quantity';
+
 // 扩展的容器输入类型，包含单号箱号、重量信息和厚度
 export type ExtendedContainerInput = {
   id: string;
@@ -27,6 +30,7 @@ export type ExtendedContainerInput = {
   containerNetWeight?: number; // 外箱净重，单位kg
   containerGrossWeight?: number; // 外箱毛重，单位kg
   labelOrientation?: LabelOrientation; // 标签面朝向，默认为auto
+  packingMethod?: PackingMethod; // 装箱方式，默认为space
 };
 
 // 扩展的算法输入类型

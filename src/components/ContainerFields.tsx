@@ -33,6 +33,7 @@ function ContainerFields(props: Props) {
       containerNetWeight: 0,
       containerGrossWeight: 0,
       labelOrientation: "auto",
+      packingMethod: "space",
     });
   };
   const remove = (idx: number) => {
@@ -84,6 +85,19 @@ function ContainerFields(props: Props) {
                 name={`containers.${idx}.orderBoxNumber`}
                 control={control}
                 placeholder="请输入单号箱号"
+              />
+            </HStack>
+            <HStack mt="1">
+              <SelectField
+                flex="1"
+                label="装箱方式"
+                name={`containers.${idx}.packingMethod`}
+                control={control}
+                selectOptions={[
+                  { value: "space", label: "按照空间装箱" },
+                  { value: "weight", label: "按照重量装箱" },
+                  { value: "quantity", label: "按照数量装箱" },
+                ]}
               />
             </HStack>
             <HStack mt="1">
