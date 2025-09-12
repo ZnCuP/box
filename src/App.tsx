@@ -14,7 +14,7 @@ import { SAMPLE_RESULT } from "./constant/sample";
 import { AppContext } from "./components/AppProvider";
 import ContainerFields from "./components/ContainerFields";
 import BoxFields from "./components/BoxFields";
-import { useForm } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import * as XLSX from 'xlsx';
 
 export default function App() {
@@ -37,34 +37,38 @@ export default function App() {
   const [rightSidebarVisible, setRightSidebarVisible] = useState(true);
   
   // 表单控制
-  const { control, handleSubmit } = useForm<ExtendedAlgoInput>({
+  const formMethods = useForm<ExtendedAlgoInput>({
+    mode: "onChange",
     defaultValues: {
       containers: [
         {
           id: "容器 1",
           qty: 1,
-          dim: [100, 100, 100],
-          orderBoxNumber: "",
-          containerNetWeight: 0,
+          dim: [100, 100, 100] as [number, number, number],
+          orderBoxNumber: "BOX001",
+          containerNetWeight: 1.0,
           containerGrossWeight: 0,
-          labelOrientation: "auto",
-          packingMethod: "space",
+          labelOrientation: "auto" as const,
+          packingMethod: "weight" as const,
+          maxWeight: 1.5,
         },
       ],
       items: [
         {
-          id: "",
+          id: "测试物品",
           qty: 5,
-          dim: [10, 10, 30],
+          dim: [10, 10, 30] as [number, number, number],
           thickness: 0,
-          oeNumber: "",
-          productNetWeight: 0,
+          oeNumber: "TEST001",
+          productNetWeight: 100,
           productGrossWeight: 0,
-          boxNetWeight: 0,
+          boxNetWeight: 50,
         },
       ],
     },
   });
+  
+  const { control, handleSubmit } = formMethods;
   
   // 执行装箱计算
   const workerPack = (input: ExtendedAlgoInput) => {
@@ -186,7 +190,9 @@ export default function App() {
         transition="left 0.3s ease-in-out"
       >
         <Box flex="1" overflowY="scroll">
-          <ContainerFields control={control} />
+          <FormProvider {...formMethods}>
+            <ContainerFields control={control} />
+          </FormProvider>
         </Box>
         <Box w="full" p="2">
           <Button
@@ -240,7 +246,9 @@ export default function App() {
          transition="right 0.3s ease-in-out"
        >
          <Box flex="1" overflowY="scroll">
-           <BoxFields control={control} />
+           <FormProvider {...formMethods}>
+             <BoxFields control={control} />
+           </FormProvider>
          </Box>
        </Flex>
        

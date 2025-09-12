@@ -11,10 +11,10 @@ import {
   Divider,
   Button,
 } from "@chakra-ui/react";
-import { Control, useFieldArray } from "react-hook-form";
+import { Control, useFieldArray, useWatch, useFormContext } from "react-hook-form";
 import { ExtendedAlgoInput } from "../types/extended";
 import Field from "./Field";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { AppContext } from "./AppProvider";
 import uniqolor from "uniqolor";
 
@@ -25,7 +25,27 @@ type Props = {
 function BoxFields(props: Props) {
   const { setColorMap } = useContext(AppContext);
   const { control } = props;
+  const { setValue } = useFormContext<ExtendedAlgoInput>();
   const boxFields = useFieldArray({ control, name: "items" });
+  
+  // 监听所有物品的净重和盒子净重变化
+  const watchedItems = useWatch({ control, name: "items" });
+  
+  // 自动计算产品毛重
+  useEffect(() => {
+    if (watchedItems) {
+      watchedItems.forEach((item, idx) => {
+        if (item && typeof item.productNetWeight === 'number' && typeof item.boxNetWeight === 'number') {
+          const grossWeight = item.productNetWeight + item.boxNetWeight;
+          const currentGrossWeight = item.productGrossWeight;
+          // 只有当计算出的毛重与当前值不同时才更新
+          if (grossWeight !== currentGrossWeight) {
+            setValue(`items.${idx}.productGrossWeight`, grossWeight);
+          }
+        }
+      });
+    }
+  }, [watchedItems, setValue]);
   const add = () => {
     const id = `物品 ${boxFields.fields.length + 1}`;
     boxFields.append({
@@ -100,7 +120,12 @@ function BoxFields(props: Props) {
                 label="产品毛重 (g)"
                 name={`items.${idx}.productGrossWeight`}
                 control={control}
-                options={{ valueAsNumber: true, min: 0 }}
+                options={{ 
+                  valueAsNumber: true, 
+                  min: 0,
+                  disabled: true // 不允许手动编辑
+                }}
+                placeholder="自动计算：产品净重 + 盒子净重"
               />
             </HStack>
             <HStack mt="1">

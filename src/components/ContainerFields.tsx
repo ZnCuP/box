@@ -11,14 +11,30 @@ import {
   Divider,
   Button,
 } from "@chakra-ui/react";
-import { Control, useFieldArray } from "react-hook-form";
+import { Control, useFieldArray, useWatch, useFormContext } from "react-hook-form";
 import { ExtendedAlgoInput } from "../types/extended";
 import Field from "./Field";
 import SelectField from "./SelectField";
+import { useEffect } from "react";
 
 type Props = {
   control: Control<ExtendedAlgoInput, any, ExtendedAlgoInput>;
 };
+
+// 容器字段监听组件，用于处理装箱方式变化时的字段清理
+function ContainerFieldWatcher({ index }: { index: number }) {
+  const { setValue } = useFormContext<ExtendedAlgoInput>();
+  const packingMethod = useWatch({ name: `containers.${index}.packingMethod` });
+  
+  useEffect(() => {
+    // 当装箱方式不是'weight'时，清除最大重量值
+    if (packingMethod !== 'weight') {
+      setValue(`containers.${index}.maxWeight`, 0);
+    }
+  }, [packingMethod, index, setValue]);
+  
+  return null;
+}
 
 function ContainerFields(props: Props) {
   const { control } = props;
@@ -34,6 +50,7 @@ function ContainerFields(props: Props) {
       containerGrossWeight: 0,
       labelOrientation: "auto",
       packingMethod: "space",
+      maxWeight: 100,
     });
   };
   const remove = (idx: number) => {
@@ -64,6 +81,7 @@ function ContainerFields(props: Props) {
       <Stack px="3" divider={<Divider />} spacing="4">
         {containerFields.fields.map((field, idx) => (
           <Box key={field.id} borderRadius="md" p="1">
+            <ContainerFieldWatcher index={idx} />
             <HStack>
               <Field
                 label="标签"
@@ -100,6 +118,19 @@ function ContainerFields(props: Props) {
                 ]}
               />
             </HStack>
+            {/* 最大重量字段 - 仅在按重量装箱时显示 */}
+            {useWatch({ control, name: `containers.${idx}.packingMethod` }) === "weight" && (
+              <HStack mt="1">
+                <Field
+                  flex="1"
+                  label="最大重量 (kg)"
+                  name={`containers.${idx}.maxWeight`}
+                  control={control}
+                  options={{ valueAsNumber: true, min: 0 }}
+                  placeholder="请输入最大重量"
+                />
+              </HStack>
+            )}
             <HStack mt="1">
               <Field
                 flex="1"

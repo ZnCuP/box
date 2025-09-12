@@ -67,17 +67,26 @@ export class Item {
   public rot: Rotation;
   private _cachedDimensions: Vector3 | null = null;
   private _cachedRotation: Rotation | null = null;
+  public productNetWeight: number; // 产品净重 (g)
+  public productGrossWeight: number; // 产品毛重 (g)
+  public boxNetWeight: number; // 盒子净重 (g)
 
   constructor(
     public id: string,
-    public dim: Vector3
+    public dim: Vector3,
+    productNetWeight: number = 0,
+    productGrossWeight: number = 0,
+    boxNetWeight: number = 0
   ) {
     this.pos = Vector3.default();
     this.rot = Rotation.LWH;
+    this.productNetWeight = productNetWeight;
+    this.productGrossWeight = productGrossWeight;
+    this.boxNetWeight = boxNetWeight;
   }
 
-  static new(id: string, length: number, width: number, height: number): Item {
-    return new Item(id, Vector3.new([length, width, height]));
+  static new(id: string, length: number, width: number, height: number, productNetWeight: number = 0, productGrossWeight: number = 0, boxNetWeight: number = 0): Item {
+    return new Item(id, new Vector3(length, width, height), productNetWeight, productGrossWeight, boxNetWeight);
   }
 
   dimensions(): Vector3 {
@@ -162,7 +171,7 @@ export class Item {
   }
 
   clone(): Item {
-    const cloned = new Item(this.id, this.dim.clone());
+    const cloned = new Item(this.id, this.dim.clone(), this.productNetWeight, this.productGrossWeight, this.boxNetWeight);
     cloned.pos = this.pos.clone();
     cloned.rot = this.rot;
     // 清除缓存，让新对象重新计算
@@ -176,24 +185,65 @@ export class Item {
 export class Container {
   public items: Item[];
   public labelOrientation: LabelOrientation;
+  public packingMethod: string;
+  public maxWeight: number; // 最大重量 (kg)
+  public containerNetWeight: number; // 容器净重 (kg)
 
   constructor(
     public id: string,
     public dim: Vector3,
-    labelOrientation: LabelOrientation = 'auto'
+    labelOrientation: LabelOrientation = 'auto',
+    packingMethod: string = 'space',
+    maxWeight: number = 0,
+    containerNetWeight: number = 0
   ) {
     this.items = [];
     this.labelOrientation = labelOrientation;
+    this.packingMethod = packingMethod;
+    this.maxWeight = maxWeight;
+    this.containerNetWeight = containerNetWeight;
   }
 
-  static new(id: string, dim: Vector3, labelOrientation: LabelOrientation = 'auto'): Container {
-    return new Container(id, dim, labelOrientation);
+  static new(id: string, dim: Vector3, labelOrientation: LabelOrientation = 'auto', packingMethod: string = 'space', maxWeight: number = 0, containerNetWeight: number = 0): Container {
+    return new Container(id, dim, labelOrientation, packingMethod, maxWeight, containerNetWeight);
   }
 
   clone(): Container {
-    const cloned = new Container(this.id, this.dim.clone(), this.labelOrientation);
+    const cloned = new Container(this.id, this.dim.clone(), this.labelOrientation, this.packingMethod, this.maxWeight, this.containerNetWeight);
     cloned.items = this.items.map(item => item.clone());
     return cloned;
+  }
+
+  // 计算容器当前重量 (g)
+  getCurrentWeight(): number {
+    if (this.packingMethod !== 'weight') {
+      return 0; // 非重量装箱模式不检查重量
+    }
+    
+    // 容器净重 (kg转g) + 所有物品的毛重 (产品净重+盒子净重)
+    const itemsWeight = this.items.reduce((total, item) => {
+      const itemGrossWeight = item.productNetWeight + item.boxNetWeight; // 直接计算毛重
+      return total + itemGrossWeight;
+    }, 0);
+    
+    return (this.containerNetWeight * 1000) + itemsWeight; // kg转g
+  }
+
+  // 检查添加新物品后是否超重
+  canAddItem(item: Item): boolean {
+    if (this.packingMethod !== 'weight' || this.maxWeight <= 0) {
+      console.log(`容器${this.id}: 非重量装箱模式或未设置最大重量，跳过重量检查`);
+      return true; // 非重量装箱模式或未设置最大重量，不检查重量
+    }
+    
+    const currentWeight = this.getCurrentWeight(); // g单位
+    const newItemWeight = item.productNetWeight + item.boxNetWeight; // 直接计算毛重
+    const totalWeight = currentWeight + newItemWeight;
+    const maxWeightInGrams = this.maxWeight * 1000; // kg转g
+    
+    console.log(`容器${this.id}重量检查: 当前${(currentWeight/1000).toFixed(3)}kg + 新物品${(newItemWeight/1000).toFixed(3)}kg = ${(totalWeight/1000).toFixed(3)}kg, 最大${this.maxWeight}kg, 结果: ${totalWeight <= maxWeightInGrams ? '通过' : '超重'}`);
+    
+    return totalWeight <= maxWeightInGrams;
   }
 }
 
@@ -239,6 +289,9 @@ export interface AlgoItemInput {
   id: string;
   qty: number;
   dim: [number, number, number];
+  productNetWeight?: number; // 产品净重 (g)
+  productGrossWeight?: number; // 产品毛重 (g)
+  boxNetWeight?: number; // 盒子净重 (g)
 }
 
 export interface AlgoContainerInput {
@@ -246,6 +299,9 @@ export interface AlgoContainerInput {
   qty: number;
   dim: [number, number, number];
   labelOrientation?: LabelOrientation;
+  packingMethod?: string; // 装箱方式
+  maxWeight?: number; // 最大重量 (kg)
+  containerNetWeight?: number; // 容器净重 (kg)
 }
 
 export interface AlgoInput {
@@ -271,12 +327,27 @@ export class PackingAlgorithm {
 
   static fromInput(input: AlgoInput): PackingAlgorithm {
     const containers: ContainerSpec[] = input.containers.map(c => new ContainerSpec(
-      Container.new(c.id, Vector3.new(c.dim), c.labelOrientation || 'auto'),
+      Container.new(
+        c.id, 
+        Vector3.new(c.dim), 
+        c.labelOrientation || 'auto',
+        c.packingMethod || 'space',
+        c.maxWeight || 0,
+        c.containerNetWeight || 0
+      ),
       c.qty
     ));
 
     const items: ItemSpec[] = input.items.map(i => new ItemSpec(
-      Item.new(i.id, i.dim[0], i.dim[1], i.dim[2]),
+      Item.new(
+        i.id, 
+        i.dim[0], 
+        i.dim[1], 
+        i.dim[2],
+        i.productNetWeight || 0,
+        i.productGrossWeight || 0,
+        i.boxNetWeight || 0
+      ),
       i.qty
     ));
 
@@ -284,6 +355,33 @@ export class PackingAlgorithm {
   }
 
   pack(): AlgoResult {
+    // 调试信息：打印输入数据
+    console.log('装箱算法输入数据:');
+    console.log('容器:', this.containers.map(c => ({
+      id: c.spec.id,
+      packingMethod: c.spec.packingMethod,
+      maxWeight: c.spec.maxWeight,
+      containerNetWeight: c.spec.containerNetWeight
+    })));
+    console.log('物品详细信息:', this.items.map(i => ({
+      id: i.spec.id,
+      qty: i.qty,
+      productNetWeight: `${(i.spec.productNetWeight/1000).toFixed(3)}kg`,
+      productGrossWeight: `${(i.spec.productGrossWeight/1000).toFixed(3)}kg`,
+      boxNetWeight: `${(i.spec.boxNetWeight/1000).toFixed(3)}kg`,
+      '完整Item对象': i.spec
+    })));
+    
+    // 额外调试：检查第一个物品的重量
+    if (this.items.length > 0) {
+      const firstItem = this.items[0].spec;
+      console.log('第一个物品重量详情:', {
+        productNetWeight: `${(firstItem.productNetWeight/1000).toFixed(3)}kg`,
+        productGrossWeight: `${(firstItem.productGrossWeight/1000).toFixed(3)}kg`,
+        boxNetWeight: `${(firstItem.boxNetWeight/1000).toFixed(3)}kg`
+      });
+    }
+    
     // 按体积排序容器（大到小，优先使用大容器）
     this.containers.sort((a, b) => {
       const volA = a.spec.dim.volume();
@@ -313,6 +411,11 @@ export class PackingAlgorithm {
 
         // 尝试放入已有容器
         for (const container of containers) {
+          // 检查重量约束
+          if (!container.canAddItem(newItem)) {
+            continue; // 超重，跳过此容器
+          }
+          
           isPacked = useSimpleAlgorithm ? 
             this.packItemSimple(newItem, container) : 
             this.packItem(newItem, container);
@@ -326,6 +429,12 @@ export class PackingAlgorithm {
           for (const containerSpec of this.containers) {
             if (containerSpec.qty > 0) {
               const newContainer = containerSpec.spec.clone();
+              
+              // 检查重量约束
+              if (!newContainer.canAddItem(newItem)) {
+                continue; // 超重，跳过此容器规格
+              }
+              
               isPacked = useSimpleAlgorithm ? 
                 this.packItemSimple(newItem, newContainer) : 
                 this.packItem(newItem, newContainer);

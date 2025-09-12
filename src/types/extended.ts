@@ -31,6 +31,7 @@ export type ExtendedContainerInput = {
   containerGrossWeight?: number; // 外箱毛重，单位kg
   labelOrientation?: LabelOrientation; // 标签面朝向，默认为auto
   packingMethod?: PackingMethod; // 装箱方式，默认为space
+  maxWeight?: number; // 最大重量（kg）
 };
 
 // 扩展的算法输入类型
@@ -66,23 +67,34 @@ export type ExtendedAlgoResult = {
 
 // 转换函数：将扩展类型转换为标准的AlgoInput类型
 export function convertToAlgoInput(extendedInput: ExtendedAlgoInput): AlgoInput {
-  return {
+  console.log('转换前的扩展输入数据:', extendedInput);
+  
+  const result = {
     containers: extendedInput.containers.map(container => ({
       id: container.id,
       qty: container.qty,
       dim: container.thickness 
         ? [container.dim[0] - container.thickness * 2, container.dim[1] - container.thickness * 2, container.dim[2] - container.thickness * 2] as [number, number, number]
         : container.dim,
-      labelOrientation: container.labelOrientation || 'auto'
+      labelOrientation: container.labelOrientation || 'auto',
+      packingMethod: container.packingMethod || 'space',
+      maxWeight: container.maxWeight || 0,
+      containerNetWeight: container.containerNetWeight || 0
     })),
     items: extendedInput.items.map(item => ({
       id: item.id,
       qty: item.qty,
       dim: item.thickness 
         ? [item.dim[0], item.dim[1], item.dim[2] + item.thickness * 2] as [number, number, number]
-        : item.dim
+        : item.dim,
+      productNetWeight: item.productNetWeight || 0,
+      productGrossWeight: item.productGrossWeight || 0,
+      boxNetWeight: item.boxNetWeight || 0
     }))
   };
+  
+  console.log('转换后的标准输入数据:', result);
+  return result;
 }
 
 // 转换函数：将扩展结果类型转换为标准结果类型
