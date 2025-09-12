@@ -12,8 +12,9 @@ import {
   Button,
 } from "@chakra-ui/react";
 import { Control, useFieldArray } from "react-hook-form";
-import { ExtendedAlgoInput, ExtendedContainerInput } from "../types/extended";
+import { ExtendedAlgoInput } from "../types/extended";
 import Field from "./Field";
+import SelectField from "./SelectField";
 
 type Props = {
   control: Control<ExtendedAlgoInput, any, ExtendedAlgoInput>;
@@ -31,6 +32,7 @@ function ContainerFields(props: Props) {
       orderBoxNumber: "",
       containerNetWeight: 0,
       containerGrossWeight: 0,
+      labelOrientation: "auto",
     });
   };
   const remove = (idx: number) => {
@@ -132,6 +134,18 @@ function ContainerFields(props: Props) {
                   control={control}
                   options={{ valueAsNumber: true, min: 0 }}
                   placeholder="默认为0"
+                />
+                <SelectField
+                  flex="1"
+                  label="标签面朝向"
+                  name={`containers.${idx}.labelOrientation`}
+                  control={control}
+                  selectOptions={[
+                    { value: "auto", label: "自动选择" },
+                    { value: "length_width_up", label: "长×宽朝上" },
+                    { value: "length_height_up", label: "长×高朝上" },
+                    { value: "width_height_up", label: "宽×高朝上" },
+                  ]}
                 />
               </HStack>
             </Box>

@@ -175,20 +175,23 @@ export class Item {
 // 容器类
 export class Container {
   public items: Item[];
+  public labelOrientation: LabelOrientation;
 
   constructor(
     public id: string,
-    public dim: Vector3
+    public dim: Vector3,
+    labelOrientation: LabelOrientation = 'auto'
   ) {
     this.items = [];
+    this.labelOrientation = labelOrientation;
   }
 
-  static new(id: string, dim: Vector3): Container {
-    return new Container(id, dim);
+  static new(id: string, dim: Vector3, labelOrientation: LabelOrientation = 'auto'): Container {
+    return new Container(id, dim, labelOrientation);
   }
 
   clone(): Container {
-    const cloned = new Container(this.id, this.dim.clone());
+    const cloned = new Container(this.id, this.dim.clone(), this.labelOrientation);
     cloned.items = this.items.map(item => item.clone());
     return cloned;
   }
@@ -209,6 +212,28 @@ export class ContainerSpec {
   ) {}
 }
 
+// 标签面朝向类型
+export type LabelOrientation = 'auto' | 'length_width_up' | 'length_height_up' | 'width_height_up';
+
+// 根据标签面朝向获取允许的旋转
+function getAllowedRotations(orientation: LabelOrientation): Rotation[] {
+  switch (orientation) {
+    case 'length_width_up':
+      // 长×宽面朝上，高度方向不变
+      return [Rotation.LWH, Rotation.WLH];
+    case 'length_height_up':
+      // 长×高面朝上，宽度方向不变
+      return [Rotation.LHW, Rotation.HLW];
+    case 'width_height_up':
+      // 宽×高面朝上，长度方向不变
+      return [Rotation.WHL, Rotation.HWL];
+    case 'auto':
+    default:
+      // 自动选择，允许所有旋转
+      return [Rotation.LWH, Rotation.WLH, Rotation.WHL, Rotation.HLW, Rotation.HWL, Rotation.LHW];
+  }
+}
+
 // 输入数据结构
 export interface AlgoItemInput {
   id: string;
@@ -216,9 +241,16 @@ export interface AlgoItemInput {
   dim: [number, number, number];
 }
 
+export interface AlgoContainerInput {
+  id: string;
+  qty: number;
+  dim: [number, number, number];
+  labelOrientation?: LabelOrientation;
+}
+
 export interface AlgoInput {
   items: AlgoItemInput[];
-  containers: AlgoItemInput[];
+  containers: AlgoContainerInput[];
 }
 
 // 结果数据结构
@@ -239,7 +271,7 @@ export class PackingAlgorithm {
 
   static fromInput(input: AlgoInput): PackingAlgorithm {
     const containers: ContainerSpec[] = input.containers.map(c => new ContainerSpec(
-      Container.new(c.id, Vector3.new(c.dim)),
+      Container.new(c.id, Vector3.new(c.dim), c.labelOrientation || 'auto'),
       c.qty
     ));
 
@@ -268,6 +300,10 @@ export class PackingAlgorithm {
 
     const containers: Container[] = [];
     const unpackedItems: Item[] = [];
+    
+    // 计算总物品数量，用于性能优化
+    const totalItems = this.items.reduce((sum, spec) => sum + spec.qty, 0);
+    const useSimpleAlgorithm = totalItems > 100; // 超过100个物品时使用简化算法
 
     // 遍历每个物品规格
     for (const itemSpec of this.items) {
@@ -277,7 +313,9 @@ export class PackingAlgorithm {
 
         // 尝试放入已有容器
         for (const container of containers) {
-          isPacked = this.packItem(newItem, container);
+          isPacked = useSimpleAlgorithm ? 
+            this.packItemSimple(newItem, container) : 
+            this.packItem(newItem, container);
           if (isPacked) {
             break;
           }
@@ -288,7 +326,9 @@ export class PackingAlgorithm {
           for (const containerSpec of this.containers) {
             if (containerSpec.qty > 0) {
               const newContainer = containerSpec.spec.clone();
-              isPacked = this.packItem(newItem, newContainer);
+              isPacked = useSimpleAlgorithm ? 
+                this.packItemSimple(newItem, newContainer) : 
+                this.packItem(newItem, newContainer);
               if (isPacked) {
                 containerSpec.qty--;
                 containers.push(newContainer);
@@ -310,52 +350,210 @@ export class PackingAlgorithm {
     };
   }
 
+  // 简化版装箱算法，用于大量物品时的快速处理
+  private packItemSimple(item: Item, container: Container): boolean {
+    if (container.items.length < 1) {
+      return this.packToBox(item, container, Vector3.default());
+    }
+
+    // 只尝试最基本的位置：已有物品的右侧、后侧、上方
+    const allowedRotations = getAllowedRotations(container.labelOrientation);
+    
+    for (const existingItem of container.items) {
+      const itemPos = existingItem.pos;
+      const itemDims = existingItem.dimensions();
+      
+      const positions = [
+        new Vector3(itemPos.length + itemDims.length, itemPos.width, itemPos.height), // 右侧
+        new Vector3(itemPos.length, itemPos.width + itemDims.width, itemPos.height), // 后侧
+        new Vector3(itemPos.length, itemPos.width, itemPos.height + itemDims.height)  // 上方
+      ];
+      
+      for (const pos of positions) {
+        for (const rotation of allowedRotations) {
+          const testItem = item.clone();
+          testItem.rot = rotation;
+          testItem.pos = pos;
+          
+          const testDims = testItem.dimensions();
+          
+          // 快速边界检查
+          if (pos.length + testDims.length <= container.dim.length &&
+              pos.width + testDims.width <= container.dim.width &&
+              pos.height + testDims.height <= container.dim.height) {
+            
+            // 快速碰撞检查
+            if (!this.hasCollision(testItem, container)) {
+              return this.packToBox(item, container, pos);
+            }
+          }
+        }
+      }
+    }
+    
+    return false;
+  }
+
   private packItem(item: Item, container: Container): boolean {
     if (container.items.length < 1) {
       return this.packToBox(item, container, Vector3.default());
     }
 
-    // 优化：先尝试最简单的位置
-    const axes = [Axis.X, Axis.Y, Axis.Z];
-    const itemsLength = container.items.length;
+    // 使用Bottom-Left-Fill策略寻找最优位置
+    const bestPosition = this.findBestPosition(item, container);
+    if (bestPosition) {
+      return this.packToBox(item, container, bestPosition);
+    }
     
-    for (const axis of axes) {
-      for (let x = 0; x < itemsLength; x++) {
-        const existingItem = container.items[x];
-        const pivot = Vector3.computePivot(
-          axis,
-          existingItem.pos,
-          existingItem.dimensions()
-        );
+    return false;
+  }
+
+  // Bottom-Left-Fill策略：寻找最优放置位置（优化版本）
+  private findBestPosition(item: Item, container: Container): Vector3 | null {
+    // 生成候选位置
+    const positions = this.generateCandidatePositions(container);
+    const allowedRotations = getAllowedRotations(container.labelOrientation);
+    
+    let bestPosition: Vector3 | null = null;
+    let bestScore = -1;
+    
+    // 优先尝试简单位置，找到合适的就立即返回
+    for (const pos of positions) {
+      for (const rotation of allowedRotations) {
+        const testItem = item.clone();
+        testItem.rot = rotation;
+        testItem.pos = pos;
         
-        // 提前检查边界，避免不必要的碰撞检测
-        const itemDim = item.dim; // 使用原始尺寸进行快速检查
-        if (pivot.length + itemDim.length <= container.dim.length &&
-            pivot.width + itemDim.width <= container.dim.width &&
-            pivot.height + itemDim.height <= container.dim.height) {
-          if (this.packToBox(item, container, pivot)) {
-            return true;
+        const itemDims = testItem.dimensions();
+        
+        // 快速边界检查
+        if (pos.length + itemDims.length > container.dim.length ||
+            pos.width + itemDims.width > container.dim.width ||
+            pos.height + itemDims.height > container.dim.height) {
+          continue;
+        }
+        
+        // 快速碰撞检查
+        if (this.hasCollision(testItem, container)) {
+          continue;
+        }
+        
+        // 简化的评分计算
+        const score = this.calculateSimpleScore(pos, itemDims, container);
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestPosition = pos.clone();
+          
+          // 如果找到很好的位置（底部且靠角落），立即返回
+          if (pos.height === 0 && (pos.length === 0 || pos.width === 0)) {
+            return bestPosition;
           }
         }
       }
     }
+    
+    return bestPosition;
+  }
+
+  // 简化的评分计算
+  private calculateSimpleScore(pos: Vector3, _itemDims: Vector3, container: Container): number {
+    // 简单的距离评分：越靠近原点得分越高
+    const distance = pos.length + pos.width + pos.height;
+    const maxDistance = container.dim.length + container.dim.width + container.dim.height;
+    const distanceScore = (maxDistance - distance) / maxDistance;
+    
+    // 底部接触奖励
+    const bottomBonus = pos.height === 0 ? 0.5 : 0;
+    
+    // 角落奖励
+    const cornerBonus = (pos.length === 0 || pos.width === 0) ? 0.3 : 0;
+    
+    return distanceScore + bottomBonus + cornerBonus;
+  }
+
+  // 生成候选位置（优化版本）
+  private generateCandidatePositions(container: Container): Vector3[] {
+    const positions: Vector3[] = [];
+    
+    // 添加原点
+    positions.push(Vector3.default());
+    
+    // 基于已有物品生成候选位置（只生成关键位置）
+    for (const existingItem of container.items) {
+      const itemPos = existingItem.pos;
+      const itemDims = existingItem.dimensions();
+      
+      // 在物品的3个主要面生成候选位置
+      positions.push(new Vector3(itemPos.length + itemDims.length, itemPos.width, itemPos.height)); // 右侧
+      positions.push(new Vector3(itemPos.length, itemPos.width + itemDims.width, itemPos.height)); // 后侧
+      positions.push(new Vector3(itemPos.length, itemPos.width, itemPos.height + itemDims.height)); // 上方
+    }
+    
+    // 简化的网格搜索（减少搜索密度）
+    if (container.items.length < 5) { // 只在物品较少时进行网格搜索
+      const stepX = Math.max(5, Math.floor(container.dim.length / 5));
+      const stepY = Math.max(5, Math.floor(container.dim.width / 5));
+      const stepZ = Math.max(5, Math.floor(container.dim.height / 5));
+      
+      for (let x = 0; x <= container.dim.length; x += stepX) {
+        for (let y = 0; y <= container.dim.width; y += stepY) {
+          for (let z = 0; z <= container.dim.height; z += stepZ) {
+            positions.push(new Vector3(x, y, z));
+          }
+        }
+      }
+    }
+    
+    // 快速去重
+    const positionSet = new Set<string>();
+    const uniquePositions: Vector3[] = [];
+    
+    for (const pos of positions) {
+      const key = `${pos.length},${pos.width},${pos.height}`;
+      if (!positionSet.has(key)) {
+        positionSet.add(key);
+        uniquePositions.push(pos);
+      }
+    }
+    
+    return uniquePositions;
+  }
+
+
+
+
+
+  // 检测碰撞
+  private hasCollision(item: Item, container: Container): boolean {
+    const itemPos = item.pos;
+    const itemDims = item.dimensions();
+    
+    for (const existingItem of container.items) {
+      const existingPos = existingItem.pos;
+      const existingDims = existingItem.dimensions();
+      
+      // 检查3D碰撞
+      const overlapX = Math.max(0, Math.min(itemPos.length + itemDims.length, existingPos.length + existingDims.length) - Math.max(itemPos.length, existingPos.length));
+      const overlapY = Math.max(0, Math.min(itemPos.width + itemDims.width, existingPos.width + existingDims.width) - Math.max(itemPos.width, existingPos.width));
+      const overlapZ = Math.max(0, Math.min(itemPos.height + itemDims.height, existingPos.height + existingDims.height) - Math.max(itemPos.height, existingPos.height));
+      
+      // 如果三个维度都有重叠，则发生碰撞
+      if (overlapX > 0 && overlapY > 0 && overlapZ > 0) {
+        return true;
+      }
+    }
+    
     return false;
   }
 
   private packToBox(item: Item, container: Container, pivot: Vector3): boolean {
     item.pos = pivot.clone();
 
-    // 优化旋转顺序：先尝试原始方向，再尝试其他
-    const rotations = [
-      Rotation.LWH,  // 原始方向
-      Rotation.WLH,  // 90度旋转
-      Rotation.WHL,  // 其他旋转
-      Rotation.HLW,
-      Rotation.HWL,
-      Rotation.LHW
-    ];
+    // 根据容器的标签朝向约束获取允许的旋转
+    const allowedRotations = getAllowedRotations(container.labelOrientation);
 
-    for (const rot of rotations) {
+    for (const rot of allowedRotations) {
       item.rot = rot;
       const idims = item.dimensions();
 

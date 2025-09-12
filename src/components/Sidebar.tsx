@@ -23,6 +23,7 @@ function Sidebar(props: Props) {
           orderBoxNumber: "",
           containerNetWeight: 0,
           containerGrossWeight: 0,
+          labelOrientation: "auto",
         },
       ],
       items: [

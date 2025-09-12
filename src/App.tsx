@@ -185,16 +185,16 @@ function Container(props: { data: ContainerResult }) {
       <mesh
         castShadow
         position={[
-          data.dim.width / 2,
-          data.dim.height / 2,
           data.dim.length / 2,
+          data.dim.height / 2,
+          data.dim.width / 2,
         ]}
       >
         <boxGeometry
           args={[
-            data.dim.width + 0.2,
-            data.dim.height + 0.2,
             data.dim.length + 0.2,
+            data.dim.height + 0.2,
+            data.dim.width + 0.2,
           ]}
         />
         <meshStandardMaterial
@@ -216,6 +216,7 @@ function BoxItem(props: { data: ItemResult }) {
   const { data } = props;
   const { colorMap } = useContext(AppContext);
   const dim = useMemo(() => {
+    // 根据旋转计算实际尺寸
     let result = [data.dim.length, data.dim.width, data.dim.height];
     switch (data.rot) {
       case "HLW":
@@ -233,6 +234,9 @@ function BoxItem(props: { data: ItemResult }) {
       case "WHL":
         result = [data.dim.width, data.dim.height, data.dim.length];
         break;
+      case "HWL":
+        result = [data.dim.height, data.dim.width, data.dim.length];
+        break;
       default:
     }
     return result;
@@ -240,13 +244,13 @@ function BoxItem(props: { data: ItemResult }) {
   return (
     <mesh
       position={[
-        data.pos.width + dim[1] / 2,
-        data.pos.height + dim[2] / 2,
         data.pos.length + dim[0] / 2,
+        data.pos.height + dim[2] / 2,
+        data.pos.width + dim[1] / 2,
       ]}
       castShadow
     >
-      <boxGeometry args={[dim[1], dim[2], dim[0]]} />
+      <boxGeometry args={[dim[0], dim[2], dim[1]]} />
       <meshStandardMaterial
         metalness={1}
         roughness={1}
