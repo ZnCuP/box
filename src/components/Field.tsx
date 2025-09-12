@@ -1,3 +1,4 @@
+// 通用表单字段组件
 import {
   Control,
   FieldValues,
@@ -8,6 +9,7 @@ import {
 import get from "lodash/get";
 import { Box, BoxProps, Input, InputProps, Text } from "@chakra-ui/react";
 
+// 字段组件属性类型
 type Props<T extends FieldValues> = BoxProps &
   Pick<InputProps, "type" | "placeholder"> & {
     control: Control<T, unknown, T>;
@@ -18,6 +20,7 @@ type Props<T extends FieldValues> = BoxProps &
 
 function Field<T extends FieldValues>(props: Props<T>) {
   const { control, label, options, name, type, placeholder, ...rest } = props;
+  // 获取表单错误状态
   const { errors } = useFormState({ control });
   const error = get(errors, name as string);
   return (

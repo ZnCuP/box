@@ -1,10 +1,13 @@
+// 应用上下文提供者 - 管理颜色映射
 import { ReactNode, createContext, useCallback, useState } from "react";
 import uniqolor from "uniqolor";
 
+// 颜色映射类型
 type ColorMap = Map<string, string>;
 
 const stub = () => {};
 
+// 应用上下文 - 用于管理物品颜色映射
 export const AppContext = createContext<{
   colorMap: ColorMap;
   setColorMap: (id: string, c: string) => void;
@@ -16,10 +19,12 @@ export const AppContext = createContext<{
 });
 
 function AppProvider(props: { children: ReactNode }) {
+  // 颜色映射状态
   const [cMapState, setCMap] = useState<Map<string, string>>(
-    new Map([["item 1", uniqolor("item 1").color]])
+    new Map([["物品 1", uniqolor("物品 1").color]])
   );
 
+  // 设置颜色映射
   const setColorMap = useCallback((id: string, c: string) => {
     setCMap((prev) => {
       const newMap = new Map(prev);
@@ -28,6 +33,7 @@ function AppProvider(props: { children: ReactNode }) {
     });
   }, []);
 
+  // 删除颜色映射
   const deleteColorMap = useCallback((id: string) => {
     setCMap((prev) => {
       const newMap = new Map(prev);

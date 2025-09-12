@@ -1,31 +1,40 @@
+// 侧边栏组件
 import { Box, Button, Flex } from "@chakra-ui/react";
-import { AlgoInput } from "packme-wasm";
 import { useForm } from "react-hook-form";
+import { ExtendedAlgoInput } from "../types/extended";
 import ContainerFields from "./ContainerFields";
 import BoxFields from "./BoxFields";
 
 type Props = {
   isPackingReady?: boolean;
   isLoading?: boolean;
-  onPack: (input: AlgoInput) => void;
+  onPack: (input: ExtendedAlgoInput) => void;
 };
 
 function Sidebar(props: Props) {
   const { isPackingReady, isLoading } = props;
-  const { control, handleSubmit } = useForm<AlgoInput>({
+  const { control, handleSubmit } = useForm<ExtendedAlgoInput>({
     defaultValues: {
       containers: [
         {
-          id: "container 1",
+          id: "容器 1",
           qty: 1,
-          dim: [20, 20, 30],
+          dim: [100, 100, 100],
+          orderBoxNumber: "",
+          containerNetWeight: 0,
+          containerGrossWeight: 0,
         },
       ],
       items: [
         {
-          id: "item 1",
+          id: "",
           qty: 5,
           dim: [10, 10, 30],
+          thickness: 0,
+          oeNumber: "",
+          productNetWeight: 0,
+          productGrossWeight: 0,
+          boxNetWeight: 0,
         },
       ],
     },
@@ -66,7 +75,7 @@ function Sidebar(props: Props) {
             isLoading={isLoading}
             isDisabled={!isPackingReady}
           >
-            Start Packing
+            开始装箱
           </Button>
         </Box>
       </Flex>

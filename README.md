@@ -1,5 +1,5 @@
-# packme-visualizer
+# 装箱算法可视化工具
 
-web based visualizer for [packme-wasm](https://github.com/adeyahya/packme-wasm) A 3D bin packing library in Rust/WebAssembly.
+基于网页的 [packme-wasm](https://github.com/adeyahya/packme-wasm) 可视化工具，这是一个用 Rust/WebAssembly 编写的 3D 装箱算法库。
 
-![Screenshot](screenshot.png "Screenshot")
+![截图](screenshot.png "截图")

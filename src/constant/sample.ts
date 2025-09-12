@@ -1,9 +1,12 @@
+// 示例装箱结果数据
+// 注意：这是装箱算法的输出结果，不包含厚度字段
+// 厚度字段仅在输入数据中使用，算法会自动计算调整后的尺寸
 import { AlgoResult } from "packme-wasm";
 
 export const SAMPLE_RESULT: AlgoResult = {
   unpacked_items: [
     {
-      id: "item 1",
+      id: "物品 1",
       dim: {
         length: 10,
         width: 10,
@@ -19,7 +22,7 @@ export const SAMPLE_RESULT: AlgoResult = {
   ],
   containers: [
     {
-      id: "container 1",
+      id: "容器 1",
       dim: {
         length: 20,
         width: 20,
@@ -27,7 +30,7 @@ export const SAMPLE_RESULT: AlgoResult = {
       },
       items: [
         {
-          id: "item 1",
+          id: "物品 1",
           dim: {
             length: 10,
             width: 10,
@@ -41,7 +44,7 @@ export const SAMPLE_RESULT: AlgoResult = {
           rot: "LWH",
         },
         {
-          id: "item 1",
+          id: "物品 1",
           dim: {
             length: 10,
             width: 10,
@@ -55,7 +58,7 @@ export const SAMPLE_RESULT: AlgoResult = {
           rot: "LWH",
         },
         {
-          id: "item 1",
+          id: "物品 1",
           dim: {
             length: 10,
             width: 10,
@@ -69,7 +72,7 @@ export const SAMPLE_RESULT: AlgoResult = {
           rot: "LWH",
         },
         {
-          id: "item 1",
+          id: "物品 1",
           dim: {
             length: 10,
             width: 10,

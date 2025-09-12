@@ -18,6 +18,8 @@
     "@react-three/fiber": "^8.15.16",
     "@vercel/analytics": "^1.2.0",
     "framer-motion": "^11.0.5",
+    "jspdf": "^3.0.2",
+    "jspdf-autotable": "^5.0.2",
     "leva": "^0.9.35",
     "lodash": "^4.17.21",
     "packme-wasm": "0.3.0",
@@ -26,7 +28,8 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.50.1",
     "three": "^0.161.0",
-    "uniqolor": "^1.1.1"
+    "uniqolor": "^1.1.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "^18.2.55",

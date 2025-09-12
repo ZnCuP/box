@@ -1,30 +1,98 @@
-import { Box } from "@chakra-ui/react";
+// 主应用组件 - 3D装箱可视化
+import { Box, Button, VStack } from "@chakra-ui/react";
 import { Canvas } from "@react-three/fiber";
 import { Center, Environment, OrbitControls, Edges } from "@react-three/drei";
 import {
-  AlgoInput,
   AlgoResult,
   ContainerResult,
   ItemResult,
 } from "packme-wasm";
+import { ExtendedAlgoInput, ExtendedAlgoResult, convertToAlgoInput, convertToExtendedResult } from "./types/extended";
 import { useMount } from "./hooks/useMount";
 import { useContext, useMemo, useRef, useState } from "react";
 import { SAMPLE_RESULT } from "./constant/sample";
 import { AppContext } from "./components/AppProvider";
 import Sidebar from "./components/Sidebar";
+import * as XLSX from 'xlsx';
 
 export default function App() {
+  // Worker准备状态
   const [isWorkerReady, setWorkerReady] = useState(false);
+  // 装箱计算状态
   const [isPacking, setPacking] = useState(false);
+  // 装箱结果
   const [result, setResult] = useState<AlgoResult | undefined>(SAMPLE_RESULT);
+  // 扩展装箱结果（用于PDF导出）
+  const [extendedResult, setExtendedResult] = useState<ExtendedAlgoResult | undefined>();
+  // 原始输入数据（用于PDF导出）
+  const [originalInput, setOriginalInput] = useState<ExtendedAlgoInput | undefined>();
+  const originalInputRef = useRef<ExtendedAlgoInput | undefined>();
+  // Worker引用
   const workerRef = useRef<Worker>();
 
-  const workerPack = (input: AlgoInput) => {
+  // 执行装箱计算
+  const workerPack = (input: ExtendedAlgoInput) => {
     setResult(undefined);
+    setExtendedResult(undefined);
     setPacking(true);
-    workerRef.current?.postMessage({ type: "pack", input });
+    setOriginalInput(input);
+    originalInputRef.current = input;
+    // 将扩展类型转换为packme-wasm所需的标准类型
+    const convertedInput = convertToAlgoInput(input);
+    workerRef.current?.postMessage({ type: "pack", input: convertedInput });
   };
 
+  // 导出Excel功能
+  const exportToExcel = () => {
+    if (!extendedResult || !extendedResult.containers || !originalInput) {
+      alert("请先进行装箱计算");
+      return;
+    }
+
+    // 只处理实际有物品的容器
+    const containersWithItems = extendedResult.containers.filter(container => container.items && container.items.length > 0);
+    
+    // 创建工作簿
+    const workbook = XLSX.utils.book_new();
+    
+    containersWithItems.forEach((container, containerIndex) => {
+      // 计算容器中物品的总数量（每个item代表一个实际放置的物品）
+      const totalQty = container.items.length;
+      
+      // 获取第一个物品的信息作为代表（假设同一容器中的物品类型相同）
+      const firstItem = container.items[0];
+      
+      // 获取原始容器输入数据（显示原始尺寸，不是减去厚度后的尺寸）
+      const originalContainer = originalInput.containers[containerIndex];
+      
+      // 表格数据 - 每个容器只有一行
+      const tableData = [{
+        "单号箱号": container.orderBoxNumber || "",
+        "标签": firstItem?.id || "",
+        "OE号": firstItem?.oeNumber || "",
+        "产品净重/g": firstItem?.productNetWeight || 0,
+        "产品毛重/g": firstItem?.productGrossWeight || 0,
+        "盒子净重/g": firstItem?.boxNetWeight || 0,
+        "盒子规格/cm": firstItem ? `${firstItem.dim.length}×${firstItem.dim.width}×${firstItem.dim.height}` : "",
+        "数量/个": totalQty,
+        "外箱净重/kg": container.containerNetWeight || 0,
+        "外箱毛重/kg": container.containerGrossWeight || 0,
+        "外箱规格/cm": originalContainer ? `${originalContainer.dim[0]}×${originalContainer.dim[1]}×${originalContainer.dim[2]}` : `${container.dim.length}×${container.dim.width}×${container.dim.height}`
+      }];
+
+      // 创建工作表
+      const worksheet = XLSX.utils.json_to_sheet(tableData);
+      
+      // 添加工作表到工作簿
+      const sheetName = `容器${containerIndex + 1}`;
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    });
+
+    // 保存文件
+    XLSX.writeFile(workbook, "装箱结果.xlsx");
+  };
+
+  // 初始化装箱Worker
   useMount(() => {
     const setupPacker = async () => {
       const worker = new Worker(new URL("./worker.ts", import.meta.url), {
@@ -37,7 +105,12 @@ export default function App() {
         }
 
         if (e.data.type === "pack_result") {
-          setResult(e.data.data);
+          const algoResult = e.data.data;
+          setResult(algoResult);
+          // 使用ref中的originalInput来转换结果
+          if (originalInputRef.current) {
+            setExtendedResult(convertToExtendedResult(algoResult, originalInputRef.current));
+          }
           setPacking(false);
         }
 
@@ -52,6 +125,7 @@ export default function App() {
     setupPacker();
   });
 
+  // 计算最大高度用于相机定位
   const maxZ =
     result?.containers?.reduce((acc, container) => {
       return Math.max(acc, container.dim.height);
@@ -59,12 +133,24 @@ export default function App() {
 
   return (
     <>
-      <Sidebar
-        isPackingReady={isWorkerReady}
-        isLoading={isPacking}
-        onPack={workerPack}
-      />
-      <Box w="100svw" h="100svh">
+      <VStack spacing={0} align="stretch">
+        <Sidebar
+          isPackingReady={isWorkerReady}
+          isLoading={isPacking}
+          onPack={workerPack}
+        />
+        <Box p={4} bg="gray.50" borderTop="1px" borderColor="gray.200">
+          <Button
+             colorScheme="green"
+             onClick={exportToExcel}
+             isDisabled={!extendedResult || !extendedResult.containers}
+             size="sm"
+           >
+             导出PDF
+           </Button>
+        </Box>
+      </VStack>
+      <Box w="100svw" h="100svh" position="absolute" top={0} left={0} zIndex={-1}>
         <Canvas shadows camera={{ position: [0, 0, maxZ + 80], fov: 50 }}>
           {maxZ === 0 ? null : (
             <Center>
@@ -164,7 +250,7 @@ function BoxItem(props: { data: ItemResult }) {
       <meshStandardMaterial
         metalness={1}
         roughness={1}
-        color={colorMap.get(data.id)}
+        color={colorMap.get(data.id) || "#3182ce"}
       />
       <Edges castShadow />
     </mesh>
