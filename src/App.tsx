@@ -49,8 +49,9 @@ export default function App() {
           containerNetWeight: 1.0,
           containerGrossWeight: 0,
           labelOrientation: "auto" as const,
-          packingMethod: "weight" as const,
+          packingMethod: "quantity" as const,
           maxWeight: 1.5,
+          maxQuantity: 20,
         },
       ],
       items: [

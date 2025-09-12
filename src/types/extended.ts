@@ -32,6 +32,7 @@ export type ExtendedContainerInput = {
   labelOrientation?: LabelOrientation; // 标签面朝向，默认为auto
   packingMethod?: PackingMethod; // 装箱方式，默认为space
   maxWeight?: number; // 最大重量（kg）
+  maxQuantity?: number; // 最大数量
 };
 
 // 扩展的算法输入类型
@@ -79,6 +80,7 @@ export function convertToAlgoInput(extendedInput: ExtendedAlgoInput): AlgoInput 
       labelOrientation: container.labelOrientation || 'auto',
       packingMethod: container.packingMethod || 'space',
       maxWeight: container.maxWeight || 0,
+      maxQuantity: container.maxQuantity || 0,
       containerNetWeight: container.containerNetWeight || 0
     })),
     items: extendedInput.items.map(item => ({

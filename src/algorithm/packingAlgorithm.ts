@@ -187,6 +187,7 @@ export class Container {
   public labelOrientation: LabelOrientation;
   public packingMethod: string;
   public maxWeight: number; // 最大重量 (kg)
+  public maxQuantity: number; // 最大数量
   public containerNetWeight: number; // 容器净重 (kg)
 
   constructor(
@@ -195,21 +196,23 @@ export class Container {
     labelOrientation: LabelOrientation = 'auto',
     packingMethod: string = 'space',
     maxWeight: number = 0,
+    maxQuantity: number = 0,
     containerNetWeight: number = 0
   ) {
     this.items = [];
     this.labelOrientation = labelOrientation;
     this.packingMethod = packingMethod;
     this.maxWeight = maxWeight;
+    this.maxQuantity = maxQuantity;
     this.containerNetWeight = containerNetWeight;
   }
 
-  static new(id: string, dim: Vector3, labelOrientation: LabelOrientation = 'auto', packingMethod: string = 'space', maxWeight: number = 0, containerNetWeight: number = 0): Container {
-    return new Container(id, dim, labelOrientation, packingMethod, maxWeight, containerNetWeight);
+  static new(id: string, dim: Vector3, labelOrientation: LabelOrientation = 'auto', packingMethod: string = 'space', maxWeight: number = 0, maxQuantity: number = 0, containerNetWeight: number = 0): Container {
+    return new Container(id, dim, labelOrientation, packingMethod, maxWeight, maxQuantity, containerNetWeight);
   }
 
   clone(): Container {
-    const cloned = new Container(this.id, this.dim.clone(), this.labelOrientation, this.packingMethod, this.maxWeight, this.containerNetWeight);
+    const cloned = new Container(this.id, this.dim.clone(), this.labelOrientation, this.packingMethod, this.maxWeight, this.maxQuantity, this.containerNetWeight);
     cloned.items = this.items.map(item => item.clone());
     return cloned;
   }
@@ -229,21 +232,40 @@ export class Container {
     return (this.containerNetWeight * 1000) + itemsWeight; // kg转g
   }
 
-  // 检查添加新物品后是否超重
+  // 计算容器当前物品数量
+  getCurrentQuantity(): number {
+    return this.items.length;
+  }
+
+  // 检查添加新物品后是否超重或超量
   canAddItem(item: Item): boolean {
-    if (this.packingMethod !== 'weight' || this.maxWeight <= 0) {
-      console.log(`容器${this.id}: 非重量装箱模式或未设置最大重量，跳过重量检查`);
-      return true; // 非重量装箱模式或未设置最大重量，不检查重量
+    // 检查重量限制
+    if (this.packingMethod === 'weight' && this.maxWeight > 0) {
+      const currentWeight = this.getCurrentWeight(); // g单位
+      const newItemWeight = item.productNetWeight + item.boxNetWeight; // 直接计算毛重
+      const totalWeight = currentWeight + newItemWeight;
+      const maxWeightInGrams = this.maxWeight * 1000; // kg转g
+      
+      console.log(`容器${this.id}重量检查: 当前${(currentWeight/1000).toFixed(3)}kg + 新物品${(newItemWeight/1000).toFixed(3)}kg = ${(totalWeight/1000).toFixed(3)}kg, 最大${this.maxWeight}kg, 结果: ${totalWeight <= maxWeightInGrams ? '通过' : '超重'}`);
+      
+      if (totalWeight > maxWeightInGrams) {
+        return false;
+      }
     }
     
-    const currentWeight = this.getCurrentWeight(); // g单位
-    const newItemWeight = item.productNetWeight + item.boxNetWeight; // 直接计算毛重
-    const totalWeight = currentWeight + newItemWeight;
-    const maxWeightInGrams = this.maxWeight * 1000; // kg转g
+    // 检查数量限制
+    if (this.packingMethod === 'quantity' && this.maxQuantity > 0) {
+      const currentQuantity = this.getCurrentQuantity();
+      const newQuantity = currentQuantity + 1;
+      
+      console.log(`容器${this.id}数量检查: 当前${currentQuantity}个 + 新物品1个 = ${newQuantity}个, 最大${this.maxQuantity}个, 结果: ${newQuantity <= this.maxQuantity ? '通过' : '超量'}`);
+      
+      if (newQuantity > this.maxQuantity) {
+        return false;
+      }
+    }
     
-    console.log(`容器${this.id}重量检查: 当前${(currentWeight/1000).toFixed(3)}kg + 新物品${(newItemWeight/1000).toFixed(3)}kg = ${(totalWeight/1000).toFixed(3)}kg, 最大${this.maxWeight}kg, 结果: ${totalWeight <= maxWeightInGrams ? '通过' : '超重'}`);
-    
-    return totalWeight <= maxWeightInGrams;
+    return true;
   }
 }
 
@@ -301,6 +323,7 @@ export interface AlgoContainerInput {
   labelOrientation?: LabelOrientation;
   packingMethod?: string; // 装箱方式
   maxWeight?: number; // 最大重量 (kg)
+  maxQuantity?: number; // 最大数量
   containerNetWeight?: number; // 容器净重 (kg)
 }
 
@@ -333,6 +356,7 @@ export class PackingAlgorithm {
         c.labelOrientation || 'auto',
         c.packingMethod || 'space',
         c.maxWeight || 0,
+        c.maxQuantity || 0,
         c.containerNetWeight || 0
       ),
       c.qty

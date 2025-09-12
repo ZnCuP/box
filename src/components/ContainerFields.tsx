@@ -31,6 +31,10 @@ function ContainerFieldWatcher({ index }: { index: number }) {
     if (packingMethod !== 'weight') {
       setValue(`containers.${index}.maxWeight`, 0);
     }
+    // 当装箱方式不是'quantity'时，清除最大数量值
+    if (packingMethod !== 'quantity') {
+      setValue(`containers.${index}.maxQuantity`, 0);
+    }
   }, [packingMethod, index, setValue]);
   
   return null;
@@ -51,6 +55,7 @@ function ContainerFields(props: Props) {
       labelOrientation: "auto",
       packingMethod: "space",
       maxWeight: 100,
+      maxQuantity: 20,
     });
   };
   const remove = (idx: number) => {
@@ -128,6 +133,19 @@ function ContainerFields(props: Props) {
                   control={control}
                   options={{ valueAsNumber: true, min: 0 }}
                   placeholder="请输入最大重量"
+                />
+              </HStack>
+            )}
+            {/* 最大数量字段 - 仅在按数量装箱时显示 */}
+            {useWatch({ control, name: `containers.${idx}.packingMethod` }) === "quantity" && (
+              <HStack mt="1">
+                <Field
+                  flex="1"
+                  label="最大数量"
+                  name={`containers.${idx}.maxQuantity`}
+                  control={control}
+                  options={{ valueAsNumber: true, min: 1 }}
+                  placeholder="请输入最大数量"
                 />
               </HStack>
             )}
