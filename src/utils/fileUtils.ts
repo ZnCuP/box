@@ -1,7 +1,25 @@
 import { BoxPreset } from '../constant/containerPresets';
 import { ItemBoxPreset } from '../components/ItemBoxPresetEditor';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+// 动态获取API基础URL
+const getApiBaseUrl = () => {
+  // 优先使用环境变量中的API地址
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // 如果是开发环境，使用localhost
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3001/api';
+  }
+  
+  // 生产环境，使用当前域名的3001端口
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  return `${protocol}//${hostname}:3001/api`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // API 响应类型
 interface ApiResponse<T = any> {

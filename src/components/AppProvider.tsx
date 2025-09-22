@@ -1,6 +1,5 @@
 // 应用上下文提供者 - 管理颜色映射
 import { ReactNode, createContext, useCallback, useState } from "react";
-import uniqolor from "uniqolor";
 
 // 颜色映射类型
 type ColorMap = Map<string, string>;

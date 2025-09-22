@@ -25,7 +25,6 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  Icon,
 } from '@chakra-ui/react';
 import { SearchIcon } from '@chakra-ui/icons';
 import { ProductData } from '../utils/excelUtils';
