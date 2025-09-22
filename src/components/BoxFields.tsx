@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // 物品字段组件
-import { AddIcon } from "@chakra-ui/icons";
+import { AddIcon, DownloadIcon } from "@chakra-ui/icons";
 import {
   Box,
   Flex,
@@ -15,10 +15,13 @@ import { Control, useFieldArray, useWatch, useFormContext } from "react-hook-for
 import { ExtendedAlgoInput } from "../types/extended";
 import Field from "./Field";
 import SelectField from "./SelectField";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { AppContext } from "./AppProvider";
 import uniqolor from "uniqolor";
 import { ItemBoxPreset } from "./ItemBoxPresetEditor";
+import { readProductDataFromExcel, ProductData } from "../utils/excelUtils";
+import ProductImportModal from "./ProductImportModal";
+import { useToast } from "@chakra-ui/react";
 
 type Props = {
   control: Control<ExtendedAlgoInput, any, ExtendedAlgoInput>;
@@ -30,6 +33,11 @@ function BoxFields(props: Props) {
   const { control, itemBoxPresets = [] } = props;
   const { setValue } = useFormContext<ExtendedAlgoInput>();
   const boxFields = useFieldArray({ control, name: "items" });
+  const toast = useToast();
+  
+  // 导入相关状态
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importProducts, setImportProducts] = useState<ProductData[]>([]);
   
   // 监听所有物品的净重和盒子净重变化
   const watchedItems = useWatch({ control, name: "items" });
@@ -75,6 +83,99 @@ function BoxFields(props: Props) {
       });
     }
   }, [watchedItems, setValue, itemBoxPresets]);
+  // 处理文件导入
+  const handleFileImport = async (file: File) => {
+    console.log('🚀 开始处理文件导入:', file.name, file.size, 'bytes');
+    
+    try {
+      const products = await readProductDataFromExcel(file);
+      console.log('📦 读取到的产品数据:', products);
+      
+      if (products.length === 0) {
+        console.log('⚠️ 未找到产品数据');
+        toast({
+          title: '未找到产品数据',
+          description: '请检查Excel文件格式是否正确',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      console.log('✅ 设置导入产品数据并打开弹窗');
+      setImportProducts(products);
+      setIsImportModalOpen(true);
+    } catch (error) {
+      console.error('❌ 文件导入失败:', error);
+      toast({
+        title: '文件读取失败',
+        description: error instanceof Error ? error.message : '未知错误',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // 处理导入确认
+  const handleImport = (selectedProducts: any[]) => {
+    console.log('导入的产品:', selectedProducts);
+    
+    selectedProducts.forEach((product, index) => {
+      const selectedPreset = itemBoxPresets.find(preset => preset.id === product.selectedBoxPreset);
+      
+      // 生成唯一的产品ID，确保每个产品都有不同的颜色
+      const uniqueId = product.customerNumber || `${product.oeNumber}_${Date.now()}_${index}`;
+      
+      // 调试日志：打印产品信息和生成的ID
+      console.log(`产品 ${index + 1}:`, {
+        customerNumber: product.customerNumber,
+        oeNumber: product.oeNumber,
+        uniqueId: uniqueId,
+        timestamp: Date.now(),
+        index: index
+      });
+      
+      boxFields.append({
+        id: uniqueId,
+        dim: selectedPreset ? selectedPreset.dimensions : [0, 0, 0],
+        qty: product.editableQuantity,
+        oeNumber: product.oeNumber,
+        productNetWeight: 0,
+        productGrossWeight: selectedPreset ? selectedPreset.netWeight : 0,
+        boxNetWeight: selectedPreset ? selectedPreset.netWeight : 0,
+      });
+      
+      // 使用预定义的高对比度颜色数组，确保每个产品都有明显不同的颜色
+      const highContrastColors = [
+        '#FF6B6B', // 红色
+        '#4ECDC4', // 青色
+        '#45B7D1', // 蓝色
+        '#96CEB4', // 绿色
+        '#FFEAA7', // 黄色
+        '#DDA0DD', // 紫色
+        '#98D8C8', // 薄荷绿
+        '#F7DC6F', // 金黄色
+        '#BB8FCE', // 淡紫色
+        '#85C1E9', // 天蓝色
+        '#F8C471', // 橙色
+        '#82E0AA', // 浅绿色
+        '#F1948A', // 粉红色
+        '#85C1E9', // 浅蓝色
+        '#D7BDE2'  // 淡紫色
+      ];
+      
+      // 使用产品索引来选择颜色，确保不同产品有不同颜色
+      const colorIndex = index % highContrastColors.length;
+      const generatedColor = highContrastColors[colorIndex];
+      console.log(`🎨 为产品 ${uniqueId} (索引${index}) 分配颜色: ${generatedColor}`);
+      
+      setColorMap(uniqueId, generatedColor);
+      console.log(`✅ 颜色映射已设置: ${uniqueId} -> ${generatedColor}`);
+    });
+  };
+
   const add = () => {
     const id = `产品 ${boxFields.fields.length + 1}`;
     boxFields.append({
@@ -106,12 +207,33 @@ function BoxFields(props: Props) {
         <Heading size="sm" color="white">
           产品
         </Heading>
-        <IconButton
-          onClick={add}
-          size="xs"
-          aria-label="add"
-          icon={<AddIcon />}
-        />
+        <HStack spacing={1}>
+          <IconButton
+            onClick={() => {
+              // 创建文件输入元素
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.xls,.xlsx';
+              input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (file) {
+                  handleFileImport(file);
+                }
+              };
+              input.click();
+            }}
+            size="xs"
+            aria-label="import"
+            icon={<DownloadIcon />}
+            title="导入产品数据"
+          />
+          <IconButton
+            onClick={add}
+            size="xs"
+            aria-label="add"
+            icon={<AddIcon />}
+          />
+        </HStack>
       </Flex>
       <Stack px="3" divider={<Divider />} spacing="4">
         {boxFields.fields.map((field, idx) => (
@@ -227,6 +349,14 @@ function BoxFields(props: Props) {
           </Box>
         ))}
       </Stack>
+      
+      <ProductImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        products={importProducts}
+        onImport={handleImport}
+        itemBoxPresets={itemBoxPresets}
+      />
     </>
   );
 }

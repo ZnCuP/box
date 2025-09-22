@@ -462,6 +462,11 @@ function Container(props: { data: AlgoContainer }) {
 function BoxItem(props: { data: AlgoItem }) {
   const { data } = props;
   const { colorMap } = useContext(AppContext);
+  
+  // 调试日志：打印颜色映射信息
+  const itemColor = colorMap.get(data.id) || "#3182ce";
+  console.log(`BoxItem渲染 - ID: ${data.id}, 颜色: ${itemColor}`);
+  
   const dim = useMemo(() => {
     // 根据旋转计算实际尺寸
     let result = [data.dim.length, data.dim.width, data.dim.height];
@@ -501,7 +506,7 @@ function BoxItem(props: { data: AlgoItem }) {
       <meshStandardMaterial
         metalness={1}
         roughness={1}
-        color={colorMap.get(data.id) || "#3182ce"}
+        color={itemColor}
       />
       <Edges castShadow />
     </mesh>
