@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// 容器字段组件
+// 箱子字段组件
 import { AddIcon } from "@chakra-ui/icons";
 import {
   Box,
@@ -16,12 +16,14 @@ import { ExtendedAlgoInput } from "../types/extended";
 import Field from "./Field";
 import SelectField from "./SelectField";
 import { useEffect } from "react";
+import { getBoxPresetOptions, getBoxPresetById, BoxPreset } from "../constant/containerPresets";
 
 type Props = {
   control: Control<ExtendedAlgoInput, any, ExtendedAlgoInput>;
+  boxPresets?: BoxPreset[];
 };
 
-// 容器字段监听组件，用于处理装箱方式变化时的字段清理
+// 箱子字段监听组件，用于处理装箱方式变化时的字段清理
 function ContainerFieldWatcher({ index }: { index: number }) {
   const { setValue } = useFormContext<ExtendedAlgoInput>();
   const packingMethod = useWatch({ name: `containers.${index}.packingMethod` });
@@ -40,27 +42,184 @@ function ContainerFieldWatcher({ index }: { index: number }) {
   return null;
 }
 
+function ContainerFieldItem({ idx, control, remove, boxPresets }: { 
+  idx: number; 
+  control: any; 
+  remove: (idx: number) => void;
+  boxPresets?: BoxPreset[];
+}) {
+  const packingMethod = useWatch({ control, name: `containers.${idx}.packingMethod` });
+  const selectedPreset = useWatch({ control, name: `containerPreset_${idx}` });
+  const { setValue } = useFormContext<ExtendedAlgoInput>();
+
+  // 监听预设选择变化
+  useEffect(() => {
+    if (selectedPreset) {
+      const preset = getBoxPresetById(selectedPreset, boxPresets);
+      if (preset) {
+        // 自动填充预设数据
+        setValue(`containers.${idx}.dim.0`, preset.dimensions[0]);
+        setValue(`containers.${idx}.dim.1`, preset.dimensions[1]);
+        setValue(`containers.${idx}.dim.2`, preset.dimensions[2]);
+        setValue(`containers.${idx}.thickness`, preset.thickness);
+        setValue(`containers.${idx}.containerNetWeight`, preset.netWeight);
+        setValue(`containers.${idx}.containerGrossWeight`, preset.grossWeight);
+      }
+    }
+  }, [selectedPreset, idx, setValue, boxPresets]);
+
+  // 确保装箱方式有默认值
+  useEffect(() => {
+    if (!packingMethod) {
+      setValue(`containers.${idx}.packingMethod`, "space");
+    }
+  }, [packingMethod, setValue, idx]);
+  
+  return (
+    <Box borderRadius="md" p="1">
+      <ContainerFieldWatcher index={idx} />
+      <HStack>
+        <SelectField
+          flex="2"
+          label="箱子规格"
+          name={`containerPreset_${idx}`}
+          control={control}
+          selectOptions={getBoxPresetOptions(boxPresets)}
+        />
+        <Field
+          flex="1"
+          label="数量"
+          name={`containers.${idx}.qty`}
+          control={control}
+          options={{ valueAsNumber: true, min: 1, required: true }}
+        />
+      </HStack>
+      <HStack mt="1">
+        <Field
+          flex="1"
+          label="单号箱号"
+          name={`containers.${idx}.orderBoxNumber`}
+          control={control}
+          placeholder="请输入单号箱号"
+        />
+      </HStack>
+      <HStack mt="1">
+        <SelectField
+          flex="1"
+          label="装箱方式"
+          name={`containers.${idx}.packingMethod`}
+          control={control}
+          selectOptions={[
+            { value: "space", label: "按照空间装箱" },
+            { value: "weight", label: "按照重量装箱" },
+            { value: "quantity", label: "按照数量装箱" },
+          ]}
+        />
+        {/* 最大重量字段 - 仅在按重量装箱时显示 */}
+        {packingMethod === "weight" && (
+          <Field
+            flex="1"
+            label="最大重量 (kg)"
+            name={`containers.${idx}.maxWeight`}
+            control={control}
+            options={{ valueAsNumber: true, min: 0 }}
+            placeholder="请输入最大重量"
+          />
+        )}
+        {/* 最大数量字段 - 仅在按数量装箱时显示 */}
+        {packingMethod === "quantity" && (
+          <Field
+            flex="1"
+            label="最大数量"
+            name={`containers.${idx}.maxQuantity`}
+            control={control}
+            options={{ valueAsNumber: true, min: 1 }}
+            placeholder="请输入最大数量"
+          />
+        )}
+      </HStack>
+      <HStack mt="1">
+        <Field
+          flex="1"
+          label="外箱净重 (kg)"
+          name={`containers.${idx}.containerNetWeight`}
+          control={control}
+          options={{ valueAsNumber: true, min: 0 }}
+        />
+        <Field
+          flex="1"
+          label="外箱毛重 (kg)"
+          name={`containers.${idx}.containerGrossWeight`}
+          control={control}
+          options={{ valueAsNumber: true, min: 0 }}
+        />
+      </HStack>
+      <Box mt="1">
+        <HStack>
+          <Field
+            flex="1"
+            label="长度"
+            name={`containers.${idx}.dim.0`}
+            control={control}
+            options={{ valueAsNumber: true, min: 1, required: true }}
+          />
+          <Field
+            flex="1"
+            label="宽度"
+            name={`containers.${idx}.dim.1`}
+            control={control}
+            options={{ valueAsNumber: true, min: 1, required: true }}
+          />
+          <Field
+            flex="1"
+            label="高度"
+            name={`containers.${idx}.dim.2`}
+            control={control}
+            options={{ valueAsNumber: true, min: 1, required: true }}
+          />
+        </HStack>
+        <HStack mt="1">
+          <Field
+            flex="1"
+            label="厚度"
+            name={`containers.${idx}.thickness`}
+            control={control}
+            options={{ valueAsNumber: true, min: 0 }}
+            placeholder="默认为0"
+          />
+        </HStack>
+      </Box>
+      <Button
+        size="xs"
+        w="full"
+        colorScheme="red"
+        variant="link"
+        onClick={() => remove(idx)}
+      >
+        删除
+      </Button>
+    </Box>
+  );
+}
+
 function ContainerFields(props: Props) {
-  const { control } = props;
+  const { control, boxPresets } = props;
   const containerFields = useFieldArray({ control, name: "containers" });
   const add = () => {
     containerFields.append({
-      id: `容器 ${containerFields.fields.length + 1}`,
+      id: `箱子 ${containerFields.fields.length + 1}`,
       dim: [0, 0, 0],
       qty: 1,
       thickness: 0,
       orderBoxNumber: "",
       containerNetWeight: 0,
       containerGrossWeight: 0,
-      labelOrientation: "auto",
       packingMethod: "space",
       maxWeight: 100,
       maxQuantity: 20,
     });
   };
-  const remove = (idx: number) => {
-    containerFields.remove(idx);
-  };
+
   return (
     <>
       <Flex
@@ -74,7 +233,7 @@ function ContainerFields(props: Props) {
         justify="space-between"
       >
         <Heading size="sm" color="white">
-          容器
+          箱子
         </Heading>
         <IconButton
           onClick={add}
@@ -85,143 +244,13 @@ function ContainerFields(props: Props) {
       </Flex>
       <Stack px="3" divider={<Divider />} spacing="4">
         {containerFields.fields.map((field, idx) => (
-          <Box key={field.id} borderRadius="md" p="1">
-            <ContainerFieldWatcher index={idx} />
-            <HStack>
-              <Field
-                label="标签"
-                name={`containers.${idx}.id`}
-                control={control}
-              />
-              <Field
-                flex="1"
-                label="数量"
-                name={`containers.${idx}.qty`}
-                control={control}
-                options={{ valueAsNumber: true, min: 1, required: true }}
-              />
-            </HStack>
-            <HStack mt="1">
-              <Field
-                flex="1"
-                label="单号箱号"
-                name={`containers.${idx}.orderBoxNumber`}
-                control={control}
-                placeholder="请输入单号箱号"
-              />
-            </HStack>
-            <HStack mt="1">
-              <SelectField
-                flex="1"
-                label="装箱方式"
-                name={`containers.${idx}.packingMethod`}
-                control={control}
-                selectOptions={[
-                  { value: "space", label: "按照空间装箱" },
-                  { value: "weight", label: "按照重量装箱" },
-                  { value: "quantity", label: "按照数量装箱" },
-                ]}
-              />
-            </HStack>
-            {/* 最大重量字段 - 仅在按重量装箱时显示 */}
-            {useWatch({ control, name: `containers.${idx}.packingMethod` }) === "weight" && (
-              <HStack mt="1">
-                <Field
-                  flex="1"
-                  label="最大重量 (kg)"
-                  name={`containers.${idx}.maxWeight`}
-                  control={control}
-                  options={{ valueAsNumber: true, min: 0 }}
-                  placeholder="请输入最大重量"
-                />
-              </HStack>
-            )}
-            {/* 最大数量字段 - 仅在按数量装箱时显示 */}
-            {useWatch({ control, name: `containers.${idx}.packingMethod` }) === "quantity" && (
-              <HStack mt="1">
-                <Field
-                  flex="1"
-                  label="最大数量"
-                  name={`containers.${idx}.maxQuantity`}
-                  control={control}
-                  options={{ valueAsNumber: true, min: 1 }}
-                  placeholder="请输入最大数量"
-                />
-              </HStack>
-            )}
-            <HStack mt="1">
-              <Field
-                flex="1"
-                label="外箱净重 (kg)"
-                name={`containers.${idx}.containerNetWeight`}
-                control={control}
-                options={{ valueAsNumber: true, min: 0 }}
-              />
-              <Field
-                flex="1"
-                label="外箱毛重 (kg)"
-                name={`containers.${idx}.containerGrossWeight`}
-                control={control}
-                options={{ valueAsNumber: true, min: 0 }}
-              />
-            </HStack>
-            <Box mt="1">
-              <HStack>
-                <Field
-                  flex="1"
-                  label="长度"
-                  name={`containers.${idx}.dim.0`}
-                  control={control}
-                  options={{ valueAsNumber: true, min: 1, required: true }}
-                />
-                <Field
-                  flex="1"
-                  label="宽度"
-                  name={`containers.${idx}.dim.1`}
-                  control={control}
-                  options={{ valueAsNumber: true, min: 1, required: true }}
-                />
-                <Field
-                  flex="1"
-                  label="高度"
-                  name={`containers.${idx}.dim.2`}
-                  control={control}
-                  options={{ valueAsNumber: true, min: 1, required: true }}
-                />
-              </HStack>
-              <HStack mt="1">
-                <Field
-                  flex="1"
-                  label="厚度"
-                  name={`containers.${idx}.thickness`}
-                  control={control}
-                  options={{ valueAsNumber: true, min: 0 }}
-                  placeholder="默认为0"
-                />
-                <SelectField
-                  flex="1"
-                  label="标签面朝向"
-                  name={`containers.${idx}.labelOrientation`}
-                  control={control}
-                  selectOptions={[
-                    { value: "auto", label: "自动选择" },
-                    { value: "length_width_up", label: "长×宽朝上" },
-                    { value: "length_height_up", label: "长×高朝上" },
-                    { value: "width_height_up", label: "宽×高朝上" },
-                  ]}
-                />
-              </HStack>
-            </Box>
-            <Button
-              size="xs"
-              w="full"
-              colorScheme="red"
-              variant="link"
-              onClick={() => remove(idx)}
-            >
-              删除
-            </Button>
-          </Box>
+          <ContainerFieldItem 
+            key={field.id}
+            idx={idx}
+            control={control}
+            remove={containerFields.remove}
+            boxPresets={boxPresets}
+          />
         ))}
       </Stack>
     </>

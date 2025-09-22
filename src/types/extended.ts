@@ -1,5 +1,5 @@
 // 扩展类型定义文件
-import { AlgoResult, ItemResult, Vector3 } from "packme-wasm";
+import { AlgoResult, Vector3, Rotation } from "../algorithm/packingAlgorithm";
 import { AlgoInput } from "../algorithm/packingAlgorithm";
 
 // 扩展的物品输入类型，包含厚度字段、OE号和重量信息
@@ -42,7 +42,11 @@ export type ExtendedAlgoInput = {
 };
 
 // 扩展的物品结果类型
-export type ExtendedItemResult = ItemResult & {
+export type ExtendedItemResult = {
+  id: string;
+  dim: Vector3;
+  pos: Vector3;
+  rot: Rotation;
   qty?: number;
   oeNumber?: string;
   productNetWeight?: number;

@@ -1,91 +1,47 @@
 // 示例装箱结果数据
 // 注意：这是装箱算法的输出结果，不包含厚度字段
 // 厚度字段仅在输入数据中使用，算法会自动计算调整后的尺寸
-import { AlgoResult } from "packme-wasm";
+import { AlgoResult, Vector3, Rotation, Item, Container } from "../algorithm/packingAlgorithm";
+
+// 创建示例物品
+const sampleItem1 = new Item(
+  "物品 1",
+  new Vector3(10, 10, 30)
+);
+sampleItem1.pos = new Vector3(0, 0, 0);
+sampleItem1.rot = Rotation.LWH;
+
+const sampleItem2 = new Item(
+  "物品 2",
+  new Vector3(10, 10, 30)
+);
+sampleItem2.pos = new Vector3(10, 0, 0);
+sampleItem2.rot = Rotation.LWH;
+
+const sampleItem3 = new Item(
+  "物品 3",
+  new Vector3(10, 10, 30)
+);
+sampleItem3.pos = new Vector3(0, 10, 0);
+sampleItem3.rot = Rotation.LWH;
+
+const sampleItem4 = new Item(
+  "物品 4",
+  new Vector3(10, 10, 30)
+);
+sampleItem4.pos = new Vector3(10, 10, 0);
+sampleItem4.rot = Rotation.LWH;
+
+// 创建示例容器
+const sampleContainer = new Container(
+  "容器 1",
+  new Vector3(20, 20, 30)
+);
+
+// 为容器添加物品
+sampleContainer.items = [sampleItem1, sampleItem2, sampleItem3, sampleItem4];
 
 export const SAMPLE_RESULT: AlgoResult = {
-  unpacked_items: [
-    {
-      id: "物品 1",
-      dim: {
-        length: 10,
-        width: 10,
-        height: 30,
-      },
-      pos: {
-        length: 0,
-        width: 0,
-        height: 0,
-      },
-      rot: "LHW",
-    },
-  ],
-  containers: [
-    {
-      id: "容器 1",
-      dim: {
-        length: 20,
-        width: 20,
-        height: 30,
-      },
-      items: [
-        {
-          id: "物品 1",
-          dim: {
-            length: 10,
-            width: 10,
-            height: 30,
-          },
-          pos: {
-            length: 0,
-            width: 0,
-            height: 0,
-          },
-          rot: "LWH",
-        },
-        {
-          id: "物品 1",
-          dim: {
-            length: 10,
-            width: 10,
-            height: 30,
-          },
-          pos: {
-            length: 10,
-            width: 0,
-            height: 0,
-          },
-          rot: "LWH",
-        },
-        {
-          id: "物品 1",
-          dim: {
-            length: 10,
-            width: 10,
-            height: 30,
-          },
-          pos: {
-            length: 0,
-            width: 10,
-            height: 0,
-          },
-          rot: "LWH",
-        },
-        {
-          id: "物品 1",
-          dim: {
-            length: 10,
-            width: 10,
-            height: 30,
-          },
-          pos: {
-            length: 10,
-            width: 10,
-            height: 0,
-          },
-          rot: "LWH",
-        },
-      ],
-    },
-  ],
+  unpacked_items: [],
+  containers: [sampleContainer]
 };

@@ -4,18 +4,22 @@ import { Canvas } from "@react-three/fiber";
 import { Center, Environment, OrbitControls, Edges } from "@react-three/drei";
 import {
   AlgoResult,
-  ContainerResult,
-  ItemResult,
-} from "packme-wasm";
+  Container as AlgoContainer,
+  Item as AlgoItem,
+} from "./algorithm/packingAlgorithm";
 import { ExtendedAlgoInput, ExtendedAlgoResult, convertToAlgoInput, convertToExtendedResult } from "./types/extended";
 import { useMount } from "./hooks/useMount";
-import { useContext, useMemo, useRef, useState } from "react";
+import { useContext, useMemo, useRef, useState, useEffect } from "react";
 import { SAMPLE_RESULT } from "./constant/sample";
 import { AppContext } from "./components/AppProvider";
 import ContainerFields from "./components/ContainerFields";
 import BoxFields from "./components/BoxFields";
 import { useForm, FormProvider } from "react-hook-form";
 import * as XLSX from 'xlsx';
+import { boxPresets, BoxPreset } from "./constant/containerPresets";
+import BoxPresetEditor from "./components/BoxPresetEditor";
+import { useDisclosure } from "@chakra-ui/react";
+import { loadBoxPresetsFromDB } from './utils/fileUtils';
 
 export default function App() {
   // Worker准备状态
@@ -36,6 +40,30 @@ export default function App() {
   const [leftSidebarVisible, setLeftSidebarVisible] = useState(true);
   const [rightSidebarVisible, setRightSidebarVisible] = useState(true);
   
+  // 箱子规格管理
+  const [currentBoxPresets, setCurrentBoxPresets] = useState<BoxPreset[]>(boxPresets);
+  const { isOpen: isPresetEditorOpen, onOpen: onPresetEditorOpen, onClose: onPresetEditorClose } = useDisclosure();
+
+  // 从API加载箱子规格
+  useEffect(() => {
+    const loadPresets = async () => {
+      try {
+        const presets = await loadBoxPresetsFromDB();
+        if (presets.length > 0) {
+          setCurrentBoxPresets(presets);
+        }
+      } catch (error) {
+        console.error('加载箱子规格失败:', error);
+      }
+    };
+    loadPresets();
+  }, []);
+
+  // 保存箱子规格（现在直接更新状态，实际保存通过文件操作完成）
+  const handlePresetsChange = (newPresets: BoxPreset[]) => {
+    setCurrentBoxPresets(newPresets);
+  };
+  
   // 表单控制
   const formMethods = useForm<ExtendedAlgoInput>({
     mode: "onChange",
@@ -49,7 +77,7 @@ export default function App() {
           containerNetWeight: 1.0,
           containerGrossWeight: 0,
           labelOrientation: "auto" as const,
-          packingMethod: "quantity" as const,
+          packingMethod: "space" as const,
           maxWeight: 1.5,
           maxQuantity: 20,
         },
@@ -206,7 +234,7 @@ export default function App() {
       >
         <Box flex="1" overflowY="scroll">
           <FormProvider {...formMethods}>
-            <ContainerFields control={control} />
+            <ContainerFields control={control} boxPresets={currentBoxPresets} />
           </FormProvider>
         </Box>
         <Box w="full" p="2">
@@ -290,18 +318,29 @@ export default function App() {
           {rightSidebarVisible ? "▶" : "◀"}
         </Button>
       
-      <Button
+      <Flex
         position="fixed"
         top="2"
         left="50%"
         transform="translateX(-50%)"
-        size="xs"
-        colorScheme="blue"
-        onClick={exportToExcel}
+        gap={2}
         zIndex={10}
       >
-        导出Excel
-      </Button>
+        <Button
+          size="xs"
+          colorScheme="blue"
+          onClick={exportToExcel}
+        >
+          导出Excel
+        </Button>
+        <Button
+          size="xs"
+          colorScheme="green"
+          onClick={onPresetEditorOpen}
+        >
+          箱子规格管理
+        </Button>
+      </Flex>
       
       {/* 中间3D画布 */}
         <Box 
@@ -333,11 +372,19 @@ export default function App() {
           <OrbitControls enablePan={true} enableZoom={true} />
         </Canvas>
       </Box>
+
+      {/* 箱子规格编辑弹窗 */}
+      <BoxPresetEditor
+        isOpen={isPresetEditorOpen}
+        onClose={onPresetEditorClose}
+        boxPresets={currentBoxPresets}
+        onSave={handlePresetsChange}
+      />
     </Flex>
   );
 }
 
-function Container(props: { data: ContainerResult }) {
+function Container(props: { data: AlgoContainer }) {
   const { data } = props;
 
   return (
@@ -365,14 +412,14 @@ function Container(props: { data: ContainerResult }) {
         />
         <Edges castShadow />
       </mesh>
-      {data.items.map((item, idx) => (
+      {data.items.map((item: AlgoItem, idx: number) => (
         <BoxItem key={idx} data={item} />
       ))}
     </>
   );
 }
 
-function BoxItem(props: { data: ItemResult }) {
+function BoxItem(props: { data: AlgoItem }) {
   const { data } = props;
   const { colorMap } = useContext(AppContext);
   const dim = useMemo(() => {

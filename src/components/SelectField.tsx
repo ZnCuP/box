@@ -1,6 +1,7 @@
 // 下拉选择字段组件
 import {
   Control,
+  Controller,
   FieldValues,
   Path,
   RegisterOptions,
@@ -27,6 +28,7 @@ type Props<T extends FieldValues> = BoxProps & {
 
 function SelectField<T extends FieldValues>(props: Props<T>) {
   const { control, label, options, name, selectOptions, placeholder, ...rest } = props;
+  
   // 获取表单错误状态
   const { errors } = useFormState({ control });
   const error = get(errors, name as string);
@@ -38,18 +40,25 @@ function SelectField<T extends FieldValues>(props: Props<T>) {
           {label}
         </Text>
       ) : null}
-      <Select
-        placeholder={placeholder}
-        isInvalid={!!error}
-        size="xs"
-        {...control.register(name, options)}
-      >
-        {selectOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </Select>
+      <Controller
+        control={control}
+        name={name}
+        rules={options}
+        render={({ field }) => (
+          <Select
+            {...field}
+            placeholder={placeholder}
+            isInvalid={!!error}
+            size="xs"
+          >
+            {selectOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        )}
+      />
     </Box>
   );
 }
