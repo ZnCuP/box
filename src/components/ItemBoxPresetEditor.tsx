@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -90,6 +90,15 @@ const ItemBoxPresetEditor: React.FC<ItemBoxPresetEditorProps> = ({
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const cancelRef = React.useRef<HTMLButtonElement>(null);
   const toast = useToast();
+
+  // 监听itemBoxPresets变化，同步更新内部状态
+  useEffect(() => {
+    console.log('🔄 ItemBoxPresetEditor: 检测到itemBoxPresets变化，更新内部状态');
+    setPresets(convertToEditingPresets(itemBoxPresets));
+    // 如果正在编辑，取消编辑状态
+    setEditingId(null);
+    setEditingPreset(null);
+  }, [itemBoxPresets]);
 
   // 自动保存到API
   const autoSave = async (newPresets: ItemBoxPreset[]) => {
