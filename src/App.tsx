@@ -515,6 +515,20 @@ function BoxItem(props: { data: AlgoItem }) {
 
 function Env() {
   return (
-    <Environment preset="warehouse" background blur={0.65} />
+    <>
+      {/* 使用内置预设，不依赖网络 */}
+      <Environment preset="studio" background={false} />
+      
+      {/* 补充光照确保渲染效果 */}
+      <ambientLight intensity={0.6} />
+      <directionalLight 
+        position={[10, 10, 5]} 
+        intensity={1.5} 
+        castShadow 
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+      />
+      <pointLight position={[-10, -10, -10]} intensity={0.5} />
+    </>
   );
 }
