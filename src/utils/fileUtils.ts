@@ -1,4 +1,5 @@
 import { BoxPreset } from '../constant/containerPresets';
+import { ItemBoxPreset } from '../components/ItemBoxPresetEditor';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -221,4 +222,87 @@ export function downloadJSONFile(data: BoxPreset[], filename: string = 'boxPrese
   
   URL.revokeObjectURL(url);
   console.log('✅ JSON文件下载成功:', filename);
+}
+
+// ==================== 盒子规格相关API ====================
+
+// 从后端API加载盒子规格
+export async function loadItemBoxPresetsFromDB(): Promise<ItemBoxPreset[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/item-box-presets`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result: ApiResponse<ItemBoxPreset[]> = await response.json();
+    
+    if (result.success && result.data) {
+      console.log('✅ 从后端API加载盒子规格成功:', result.data.length, '个');
+      return result.data;
+    } else {
+      throw new Error(result.error || '加载失败');
+    }
+  } catch (error) {
+    console.error('❌ 从后端API加载盒子规格失败:', error);
+    
+    // 如果后端不可用，返回默认数据
+    return getDefaultItemBoxPresets();
+  }
+}
+
+// 保存盒子规格到后端API
+export async function saveItemBoxPresetsToDB(presets: ItemBoxPreset[]): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/item-box-presets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ data: presets }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result: ApiResponse = await response.json();
+    
+    if (result.success) {
+      console.log('✅ 保存盒子规格到后端API成功');
+      return true;
+    } else {
+      throw new Error(result.error || '保存失败');
+    }
+  } catch (error) {
+    console.error('❌ 保存盒子规格到后端API失败:', error);
+    return false;
+  }
+}
+
+// 获取默认盒子规格数据
+function getDefaultItemBoxPresets(): ItemBoxPreset[] {
+  return [
+    {
+      id: 'small-box',
+      name: '小盒',
+      dimensions: [10, 8, 6],
+      netWeight: 0.05,
+      description: '适合小件物品'
+    },
+    {
+      id: 'medium-box',
+      name: '中盒',
+      dimensions: [15, 12, 10],
+      netWeight: 0.08,
+      description: '适合中等物品'
+    },
+    {
+      id: 'large-box',
+      name: '大盒',
+      dimensions: [20, 16, 12],
+      netWeight: 0.12,
+      description: '适合大件物品'
+    }
+  ];
 }

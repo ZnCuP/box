@@ -5,10 +5,10 @@
     "dimensions": [
       52,
       40,
-      48
+      "48"
     ],
-    "thickness": 0,
-    "netWeight": 0,
+    "thickness": "0.50",
+    "netWeight": "0.50",
     "grossWeight": 0,
     "description": "常用标准尺寸"
   },

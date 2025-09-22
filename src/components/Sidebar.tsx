@@ -5,16 +5,18 @@ import { ExtendedAlgoInput } from "../types/extended";
 import ContainerFields from "./ContainerFields";
 import BoxFields from "./BoxFields";
 import { BoxPreset } from "../constant/containerPresets";
+import { ItemBoxPreset } from "./ItemBoxPresetEditor";
 
 type Props = {
   isPackingReady?: boolean;
   isLoading?: boolean;
   onPack: (input: ExtendedAlgoInput) => void;
   boxPresets?: BoxPreset[];
+  itemBoxPresets?: ItemBoxPreset[];
 };
 
 function Sidebar(props: Props) {
-  const { isPackingReady, isLoading, boxPresets } = props;
+  const { isPackingReady, isLoading, boxPresets, itemBoxPresets } = props;
   
   const defaultValues: ExtendedAlgoInput = {
     containers: [
@@ -22,7 +24,6 @@ function Sidebar(props: Props) {
         id: "箱子 1",
         qty: 1,
         dim: [100, 100, 100] as [number, number, number],
-        thickness: 0,
         orderBoxNumber: "",
         containerNetWeight: 0,
         containerGrossWeight: 0,
@@ -36,7 +37,6 @@ function Sidebar(props: Props) {
         id: "",
         qty: 5,
         dim: [10, 10, 30] as [number, number, number],
-        thickness: 0,
         oeNumber: "",
         productNetWeight: 0,
         productGrossWeight: 0,
@@ -75,7 +75,7 @@ function Sidebar(props: Props) {
         <Box flex="1" overflowY="scroll">
           <ContainerFields control={control} boxPresets={boxPresets} />
           <Box w="full" h="1" bg="purple.200" my="4"></Box>
-          <BoxFields control={control} />
+          <BoxFields control={control} itemBoxPresets={itemBoxPresets} />
         </Box>
         <Box w="full" p="2">
           <Button

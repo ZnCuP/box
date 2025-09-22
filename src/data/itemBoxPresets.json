@@ -1,0 +1,68 @@
+[
+  {
+    "id": "item-box-1",
+    "name": "标准盒型 16×10×9",
+    "dimensions": [
+      16,
+      10,
+      9
+    ],
+    "netWeight": "3.60",
+    "description": "常用标准盒子尺寸"
+  },
+  {
+    "id": "item-box-2",
+    "name": "小型盒型 7×5×7",
+    "dimensions": [
+      7,
+      5,
+      7
+    ],
+    "netWeight": "0.67",
+    "description": "小型产品包装盒"
+  },
+  {
+    "id": "item-box-3",
+    "name": "迷你盒型 5×3×2",
+    "dimensions": [
+      5,
+      3,
+      2
+    ],
+    "netWeight": 0.02,
+    "description": "迷你产品包装盒"
+  },
+  {
+    "id": "item-box-4",
+    "name": "扁平盒型 20×15×3",
+    "dimensions": [
+      20,
+      15,
+      3
+    ],
+    "netWeight": 0.08,
+    "description": "适合扁平产品"
+  },
+  {
+    "id": "item-box-5",
+    "name": "长条盒型 25×8×6",
+    "dimensions": [
+      25,
+      8,
+      6
+    ],
+    "netWeight": 0.12,
+    "description": "适合长条形产品"
+  },
+  {
+    "id": "item-box-6",
+    "name": "中型盒型 12×8×10",
+    "dimensions": [
+      12,
+      8,
+      10
+    ],
+    "netWeight": 0.08,
+    "description": "中等尺寸产品包装盒"
+  }
+]

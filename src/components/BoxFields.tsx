@@ -14,17 +14,20 @@ import {
 import { Control, useFieldArray, useWatch, useFormContext } from "react-hook-form";
 import { ExtendedAlgoInput } from "../types/extended";
 import Field from "./Field";
+import SelectField from "./SelectField";
 import { useContext, useEffect } from "react";
 import { AppContext } from "./AppProvider";
 import uniqolor from "uniqolor";
+import { ItemBoxPreset } from "./ItemBoxPresetEditor";
 
 type Props = {
   control: Control<ExtendedAlgoInput, any, ExtendedAlgoInput>;
+  itemBoxPresets?: ItemBoxPreset[];
 };
 
 function BoxFields(props: Props) {
   const { setColorMap } = useContext(AppContext);
-  const { control } = props;
+  const { control, itemBoxPresets = [] } = props;
   const { setValue } = useFormContext<ExtendedAlgoInput>();
   const boxFields = useFieldArray({ control, name: "items" });
   
@@ -46,15 +49,40 @@ function BoxFields(props: Props) {
       });
     }
   }, [watchedItems, setValue]);
+
+  // 监听盒子规格选择变化
+  useEffect(() => {
+    if (watchedItems) {
+      watchedItems.forEach((item: any, idx) => {
+        if (item && item.boxPreset) {
+          const preset = itemBoxPresets.find(p => p.id === item.boxPreset);
+          if (preset) {
+            // 检查是否需要更新尺寸和净重
+            const needsUpdate = 
+              item.dim[0] !== preset.dimensions[0] ||
+              item.dim[1] !== preset.dimensions[1] ||
+              item.dim[2] !== preset.dimensions[2] ||
+              item.boxNetWeight !== preset.netWeight;
+            
+            if (needsUpdate) {
+              setValue(`items.${idx}.dim.0`, preset.dimensions[0]);
+              setValue(`items.${idx}.dim.1`, preset.dimensions[1]);
+              setValue(`items.${idx}.dim.2`, preset.dimensions[2]);
+              setValue(`items.${idx}.boxNetWeight`, preset.netWeight);
+            }
+          }
+        }
+      });
+    }
+  }, [watchedItems, setValue, itemBoxPresets]);
   const add = () => {
-    const id = `物品 ${boxFields.fields.length + 1}`;
+    const id = `产品 ${boxFields.fields.length + 1}`;
     boxFields.append({
       id,
       dim: [0, 0, 0],
       qty: 1,
-      thickness: 0,
       oeNumber: "",
-      productNetWeight: 0,
+        productNetWeight: 0,
       productGrossWeight: 0,
       boxNetWeight: 0,
     });
@@ -76,7 +104,7 @@ function BoxFields(props: Props) {
         justify="space-between"
       >
         <Heading size="sm" color="white">
-          物品
+          产品
         </Heading>
         <IconButton
           onClick={add}
@@ -95,7 +123,8 @@ function BoxFields(props: Props) {
                 label="数量"
                 name={`items.${idx}.qty`}
                 control={control}
-                options={{ valueAsNumber: true, min: 1, required: true }}
+                type="number"
+                options={{ min: 1, required: true }}
               />
             </HStack>
             <HStack mt="1">
@@ -113,15 +142,18 @@ function BoxFields(props: Props) {
                 label="产品净重 (g)"
                 name={`items.${idx}.productNetWeight`}
                 control={control}
-                options={{ valueAsNumber: true, min: 0 }}
+                type="number"
+                step="0.01"
+                options={{ min: 0 }}
               />
               <Field
                 flex="1"
                 label="产品毛重 (g)"
                 name={`items.${idx}.productGrossWeight`}
                 control={control}
+                type="number"
+                step="0.01"
                 options={{ 
-                  valueAsNumber: true, 
                   min: 0,
                   disabled: true // 不允许手动编辑
                 }}
@@ -129,12 +161,26 @@ function BoxFields(props: Props) {
               />
             </HStack>
             <HStack mt="1">
+              <Box flex="2">
+                <SelectField
+                  label="盒子规格"
+                  name={`items.${idx}.boxPreset` as any}
+                  control={control as any}
+                  placeholder="选择盒子规格"
+                  selectOptions={itemBoxPresets.map(preset => ({
+                    value: preset.id,
+                    label: preset.name
+                  }))}
+                />
+              </Box>
               <Field
                 flex="1"
                 label="盒子净重 (g)"
                 name={`items.${idx}.boxNetWeight`}
                 control={control}
-                options={{ valueAsNumber: true, min: 0 }}
+                type="number"
+                step="0.01"
+                options={{ min: 0 }}
               />
             </HStack>
             <Box mt="1">
@@ -144,33 +190,30 @@ function BoxFields(props: Props) {
                   label="长度"
                   name={`items.${idx}.dim.0`}
                   control={control}
-                  options={{ valueAsNumber: true, min: 1, required: true }}
+                  type="number"
+                  step="0.01"
+                  options={{ min: 1, required: true }}
                 />
                 <Field
                   flex="1"
                   label="宽度"
                   name={`items.${idx}.dim.1`}
                   control={control}
-                  options={{ valueAsNumber: true, min: 1, required: true }}
+                  type="number"
+                  step="0.01"
+                  options={{ min: 1, required: true }}
                 />
                 <Field
                   flex="1"
                   label="高度"
                   name={`items.${idx}.dim.2`}
                   control={control}
-                  options={{ valueAsNumber: true, min: 1, required: true }}
+                  type="number"
+                  step="0.01"
+                  options={{ min: 1, required: true }}
                 />
               </HStack>
-              <HStack mt="1">
-                <Field
-                  flex="1"
-                  label="厚度"
-                  name={`items.${idx}.thickness`}
-                  control={control}
-                  options={{ valueAsNumber: true, min: 0 }}
-                  placeholder="默认为0"
-                />
-              </HStack>
+
             </Box>
             <Button
               size="xs"

@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3001;
 const DATA_FILE = path.join(__dirname, 'src/data/boxPresets.json');
+const ITEM_BOX_DATA_FILE = path.join(__dirname, 'src/data/itemBoxPresets.json');
 
 // 中间件
 app.use(cors());
@@ -88,6 +89,29 @@ async function writeData(data) {
     return true;
   } catch (error) {
     console.error('❌ 写入数据失败:', error);
+    return false;
+  }
+}
+
+// 读取盒子规格数据
+async function readItemBoxData() {
+  try {
+    const data = await fs.readFile(ITEM_BOX_DATA_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('❌ 读取盒子规格数据失败:', error);
+    return [];
+  }
+}
+
+// 写入盒子规格数据
+async function writeItemBoxData(data) {
+  try {
+    await fs.writeFile(ITEM_BOX_DATA_FILE, JSON.stringify(data, null, 2));
+    console.log('✅ 盒子规格数据已保存到:', ITEM_BOX_DATA_FILE);
+    return true;
+  } catch (error) {
+    console.error('❌ 写入盒子规格数据失败:', error);
     return false;
   }
 }
@@ -198,6 +222,37 @@ app.delete('/api/box-presets/:id', async (req, res) => {
   }
 });
 
+// ==================== 盒子规格 API ====================
+
+// 获取所有盒子规格
+app.get('/api/item-box-presets', async (req, res) => {
+  try {
+    const data = await readItemBoxData();
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 保存所有盒子规格
+app.post('/api/item-box-presets', async (req, res) => {
+  try {
+    const { data } = req.body;
+    if (!Array.isArray(data)) {
+      return res.status(400).json({ success: false, error: '数据格式错误' });
+    }
+    
+    const success = await writeItemBoxData(data);
+    if (success) {
+      res.json({ success: true, message: '盒子规格保存成功' });
+    } else {
+      res.status(500).json({ success: false, error: '保存失败' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: '服务器运行正常', timestamp: new Date().toISOString() });
@@ -211,13 +266,16 @@ async function startServer() {
     console.log(`🚀 后端服务器启动成功!`);
     console.log(`📍 服务地址: http://localhost:${PORT}`);
     console.log(`📊 API文档:`);
-    console.log(`   GET    /api/box-presets     - 获取所有箱子规格`);
-    console.log(`   POST   /api/box-presets     - 保存所有箱子规格`);
-    console.log(`   POST   /api/box-presets/add - 添加单个箱子规格`);
-    console.log(`   PUT    /api/box-presets/:id - 更新单个箱子规格`);
-    console.log(`   DELETE /api/box-presets/:id - 删除单个箱子规格`);
-    console.log(`   GET    /api/health          - 健康检查`);
+    console.log(`   GET    /api/box-presets         - 获取所有箱子规格`);
+    console.log(`   POST   /api/box-presets         - 保存所有箱子规格`);
+    console.log(`   POST   /api/box-presets/add     - 添加单个箱子规格`);
+    console.log(`   PUT    /api/box-presets/:id     - 更新单个箱子规格`);
+    console.log(`   DELETE /api/box-presets/:id     - 删除单个箱子规格`);
+    console.log(`   GET    /api/item-box-presets    - 获取所有盒子规格`);
+    console.log(`   POST   /api/item-box-presets    - 保存所有盒子规格`);
+    console.log(`   GET    /api/health              - 健康检查`);
     console.log(`💾 数据文件: ${DATA_FILE}`);
+    console.log(`💾 盒子规格数据文件: ${ITEM_BOX_DATA_FILE}`);
   });
 }
 

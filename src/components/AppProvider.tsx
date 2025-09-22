@@ -21,7 +21,7 @@ export const AppContext = createContext<{
 function AppProvider(props: { children: ReactNode }) {
   // 颜色映射状态
   const [cMapState, setCMap] = useState<Map<string, string>>(
-    new Map([["物品 1", uniqolor("物品 1").color]])
+    new Map([["产品 1", uniqolor("产品 1").color]])
   );
 
   // 设置颜色映射

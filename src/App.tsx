@@ -18,8 +18,10 @@ import { useForm, FormProvider } from "react-hook-form";
 import * as XLSX from 'xlsx';
 import { boxPresets, BoxPreset } from "./constant/containerPresets";
 import BoxPresetEditor from "./components/BoxPresetEditor";
+import ItemBoxPresetEditor, { ItemBoxPreset } from "./components/ItemBoxPresetEditor";
 import { useDisclosure } from "@chakra-ui/react";
-import { loadBoxPresetsFromDB } from './utils/fileUtils';
+import { loadBoxPresetsFromDB, loadItemBoxPresetsFromDB } from './utils/fileUtils';
+import itemBoxPresetsData from "./data/itemBoxPresets.json";
 
 export default function App() {
   // Worker准备状态
@@ -44,6 +46,10 @@ export default function App() {
   const [currentBoxPresets, setCurrentBoxPresets] = useState<BoxPreset[]>(boxPresets);
   const { isOpen: isPresetEditorOpen, onOpen: onPresetEditorOpen, onClose: onPresetEditorClose } = useDisclosure();
 
+  // 盒子规格管理
+  const [currentItemBoxPresets, setCurrentItemBoxPresets] = useState<ItemBoxPreset[]>(itemBoxPresetsData as ItemBoxPreset[]);
+  const { isOpen: isItemBoxPresetEditorOpen, onOpen: onItemBoxPresetEditorOpen, onClose: onItemBoxPresetEditorClose } = useDisclosure();
+
   // 从API加载箱子规格
   useEffect(() => {
     const loadPresets = async () => {
@@ -59,9 +65,29 @@ export default function App() {
     loadPresets();
   }, []);
 
+  // 从API加载盒子规格
+  useEffect(() => {
+    const loadItemBoxPresets = async () => {
+      try {
+        const presets = await loadItemBoxPresetsFromDB();
+        if (presets.length > 0) {
+          setCurrentItemBoxPresets(presets);
+        }
+      } catch (error) {
+        console.error('加载盒子规格失败:', error);
+      }
+    };
+    loadItemBoxPresets();
+  }, []);
+
   // 保存箱子规格（现在直接更新状态，实际保存通过文件操作完成）
   const handlePresetsChange = (newPresets: BoxPreset[]) => {
     setCurrentBoxPresets(newPresets);
+  };
+
+  // 保存盒子规格
+  const handleItemBoxPresetsChange = (newPresets: ItemBoxPreset[]) => {
+    setCurrentItemBoxPresets(newPresets);
   };
   
   // 表单控制
@@ -84,10 +110,9 @@ export default function App() {
       ],
       items: [
         {
-          id: "测试物品",
+          id: "测试产品",
           qty: 5,
           dim: [10, 10, 30] as [number, number, number],
-          thickness: 0,
           oeNumber: "TEST001",
           productNetWeight: 100,
           productGrossWeight: 0,
@@ -122,7 +147,7 @@ export default function App() {
     
 
 
-    // 只处理实际有物品的容器
+    // 只处理实际有产品的容器
     const containersWithItems = extendedResult.containers.filter(container => container.items && container.items.length > 0);
     
     // 创建工作簿
@@ -132,7 +157,7 @@ export default function App() {
       // 获取原始容器输入数据（显示原始尺寸，不是减去厚度后的尺寸）
       const originalContainer = originalInput.containers[0];
       
-      // 按物品类型分组统计
+      // 按产品类型分组统计
       const itemGroups = new Map<string, {
         item: any;
         count: number;
@@ -150,7 +175,7 @@ export default function App() {
         }
       });
       
-      // 为每种物品类型创建一行数据
+      // 为每种产品类型创建一行数据
       const tableData = Array.from(itemGroups.values()).map((group, index) => ({
         "单号箱号": index === 0 ? (container.orderBoxNumber || "") : "",
         "标签": group.item?.id || "",
@@ -274,7 +299,7 @@ export default function App() {
          {leftSidebarVisible ? "◀" : "▶"}
        </Button>
       
-      {/* 右侧物品面板 */}
+      {/* 右侧产品面板 */}
        <Flex
          flexDir="column"
          w="320px"
@@ -290,7 +315,7 @@ export default function App() {
        >
          <Box flex="1" overflowY="scroll">
            <FormProvider {...formMethods}>
-             <BoxFields control={control} />
+             <BoxFields control={control} itemBoxPresets={currentItemBoxPresets} />
            </FormProvider>
          </Box>
        </Flex>
@@ -340,6 +365,13 @@ export default function App() {
         >
           箱子规格管理
         </Button>
+        <Button
+          size="xs"
+          colorScheme="purple"
+          onClick={onItemBoxPresetEditorOpen}
+        >
+          盒子规格管理
+        </Button>
       </Flex>
       
       {/* 中间3D画布 */}
@@ -379,6 +411,14 @@ export default function App() {
         onClose={onPresetEditorClose}
         boxPresets={currentBoxPresets}
         onSave={handlePresetsChange}
+      />
+
+      {/* 盒子规格编辑弹窗 */}
+      <ItemBoxPresetEditor
+        isOpen={isItemBoxPresetEditorOpen}
+        onClose={onItemBoxPresetEditorClose}
+        itemBoxPresets={currentItemBoxPresets}
+        onSave={handleItemBoxPresetsChange}
       />
     </Flex>
   );

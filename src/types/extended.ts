@@ -2,12 +2,11 @@
 import { AlgoResult, Vector3, Rotation } from "../algorithm/packingAlgorithm";
 import { AlgoInput } from "../algorithm/packingAlgorithm";
 
-// 扩展的物品输入类型，包含厚度字段、OE号和重量信息
+// 扩展的产品输入类型，包含OE号和重量信息
 export type ExtendedItemInput = {
   id: string;
   qty: number;
   dim: [number, number, number]; // [长度, 宽度, 高度]
-  thickness?: number; // 厚度，默认为0
   oeNumber?: string; // OE号
   productNetWeight?: number; // 产品净重，单位g
   productGrossWeight?: number; // 产品毛重，单位g
@@ -70,6 +69,45 @@ export type ExtendedAlgoResult = {
   unpacked_items: ExtendedItemResult[];
 };
 
+// 辅助函数：安全地将值转换为数字，支持字符串形式的小数
+function safeParseFloat(value: any): number {
+  console.log('[extended.ts] safeParseFloat input:', {
+    value,
+    type: typeof value,
+    isNull: value === null,
+    isUndefined: value === undefined,
+    isEmpty: value === ''
+  });
+  
+  if (value === null || value === undefined || value === '') {
+    console.log('[extended.ts] safeParseFloat returning 0 (null/undefined/empty)');
+    return 0;
+  }
+  
+  if (typeof value === 'number') {
+    console.log('[extended.ts] safeParseFloat returning number:', value);
+    return value;
+  }
+  
+  if (typeof value === 'string') {
+    // 处理中文句号
+    const processedValue = value.replace(/。/g, '.');
+    console.log('[extended.ts] safeParseFloat processed string:', processedValue);
+    
+    const parsed = parseFloat(processedValue);
+    const result = isNaN(parsed) ? 0 : parsed;
+    console.log('[extended.ts] safeParseFloat parsed result:', {
+      parsed,
+      isNaN: isNaN(parsed),
+      finalResult: result
+    });
+    return result;
+  }
+  
+  console.log('[extended.ts] safeParseFloat returning 0 (unknown type)');
+  return 0;
+}
+
 // 转换函数：将扩展类型转换为标准的AlgoInput类型
 export function convertToAlgoInput(extendedInput: ExtendedAlgoInput): AlgoInput {
   console.log('转换前的扩展输入数据:', extendedInput);
@@ -79,23 +117,21 @@ export function convertToAlgoInput(extendedInput: ExtendedAlgoInput): AlgoInput 
       id: container.id,
       qty: container.qty,
       dim: container.thickness 
-        ? [container.dim[0] - container.thickness * 2, container.dim[1] - container.thickness * 2, container.dim[2] - container.thickness * 2] as [number, number, number]
+        ? [container.dim[0] - safeParseFloat(container.thickness) * 2, container.dim[1] - safeParseFloat(container.thickness) * 2, container.dim[2] - safeParseFloat(container.thickness) * 2] as [number, number, number]
         : container.dim,
       labelOrientation: container.labelOrientation || 'auto',
       packingMethod: container.packingMethod || 'space',
-      maxWeight: container.maxWeight || 0,
+      maxWeight: safeParseFloat(container.maxWeight),
       maxQuantity: container.maxQuantity || 0,
-      containerNetWeight: container.containerNetWeight || 0
+      containerNetWeight: safeParseFloat(container.containerNetWeight)
     })),
     items: extendedInput.items.map(item => ({
       id: item.id,
       qty: item.qty,
-      dim: item.thickness 
-        ? [item.dim[0], item.dim[1], item.dim[2] + item.thickness * 2] as [number, number, number]
-        : item.dim,
-      productNetWeight: item.productNetWeight || 0,
-      productGrossWeight: item.productGrossWeight || 0,
-      boxNetWeight: item.boxNetWeight || 0
+      dim: item.dim,
+      productNetWeight: safeParseFloat(item.productNetWeight),
+      productGrossWeight: safeParseFloat(item.productGrossWeight),
+      boxNetWeight: safeParseFloat(item.boxNetWeight)
     }))
   };
   

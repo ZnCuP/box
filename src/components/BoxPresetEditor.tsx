@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -85,11 +85,15 @@ const BoxPresetEditor: React.FC<BoxPresetEditorProps> = ({
   const cancelRef = React.useRef<HTMLButtonElement>(null);
   const toast = useToast();
 
+  // 当boxPresets prop更新时，同步更新内部状态
+  useEffect(() => {
+    setPresets(convertToEditingPresets(boxPresets));
+  }, [boxPresets]);
+
   // 自动保存到API
    const autoSave = async (newPresets: BoxPreset[]) => {
      try {
        await saveBoxPresetsToDB(newPresets);
-       console.log('✅ 数据已自动保存到API');
      } catch (error) {
        console.error('❌ 自动保存失败:', error);
       toast({
@@ -216,35 +220,44 @@ const BoxPresetEditor: React.FC<BoxPresetEditorProps> = ({
     }
   };
 
-  const handleSaveAll = () => {
-    const finalPresets = presets.filter(p => !p.isNew);
-    const boxPresets = convertToBoxPresets(finalPresets);
-    onSave(boxPresets);
-    onClose();
-    toast({
-      title: '成功',
-      description: '所有更改已保存',
-      status: 'success',
-      duration: 2000,
-      isClosable: true,
-    });
+
+
+  // 处理中文句号转换和数字输入
+  const handleNumberInputChange = (field: keyof EditingPreset, value: string) => {
+    // 将中文句号转换为英文小数点
+    const processedValue = value.replace(/。/g, '.');
+    
+    // 如果字符串以小数点结尾或者是有效的数字格式，保持原字符串
+    // 只有在完全无效的情况下才转换为0
+    let finalValue;
+    if (processedValue === '' || processedValue === '.' || /^\d*\.?\d*$/.test(processedValue)) {
+      finalValue = processedValue === '' ? 0 : processedValue;
+    } else {
+      const numValue = parseFloat(processedValue);
+      finalValue = isNaN(numValue) ? 0 : numValue;
+    }
+    
+    setEditingPreset(prev => prev ? { 
+      ...prev, 
+      [field]: finalValue 
+    } : null);
   };
 
   const renderTableCell = (preset: EditingPreset, field: keyof EditingPreset, type: 'text' | 'number' | 'textarea' = 'text') => {
     const isEditing = editingId === preset.id;
     
     if (!isEditing) {
-      return <Td py={2} height="48px" verticalAlign="middle">{preset[field]}</Td>;
+      return <Td py={1} height="36px" verticalAlign="middle">{preset[field]}</Td>;
     }
 
     if (type === 'textarea') {
       return (
-        <Td py={2} height="48px" verticalAlign="middle">
+        <Td py={1} height="36px" verticalAlign="middle">
           <Input
             value={editingPreset?.[field] as string || ''}
             onChange={(e) => setEditingPreset(prev => prev ? { ...prev, [field]: e.target.value } : null)}
-            size="sm"
-            height="32px"
+            size="xs"
+            height="28px"
             placeholder="描述信息"
           />
         </Td>
@@ -252,27 +265,64 @@ const BoxPresetEditor: React.FC<BoxPresetEditorProps> = ({
     }
 
     if (type === 'number') {
+      // 判断是否为重量字段（需要小数支持）
+      const isWeightField = field === 'netWeight' || field === 'thickness';
+      
       return (
-        <Td py={2} height="48px" verticalAlign="middle">
+        <Td py={1} height="36px" verticalAlign="middle">
           <NumberInput
             value={editingPreset?.[field] as number || 0}
-            onChange={(_, value) => setEditingPreset(prev => prev ? { ...prev, [field]: value } : null)}
-            size="sm"
+            onChange={(valueString) => handleNumberInputChange(field, valueString)}
+            size="xs"
             min={0}
+            precision={isWeightField ? 2 : 0}
+            step={isWeightField ? 0.01 : 1}
           >
-            <NumberInputField height="32px" />
+            <NumberInputField 
+              height="28px"
+              onKeyDown={(e) => {
+                // 允许中文句号输入
+                if (e.key === '。') {
+                  e.preventDefault();
+                  
+                  const input = e.target as HTMLInputElement;
+                  const start = input.selectionStart || 0;
+                  const end = input.selectionEnd || 0;
+                  const value = input.value;
+                  
+                  // 检查是否已经有小数点
+                  if (value.includes('.')) {
+                    return;
+                  }
+                  
+                  // 在光标位置插入小数点
+                  const newValue = value.slice(0, start) + '.' + value.slice(end);
+                  
+                  // 直接设置input的值并触发事件
+                  input.value = newValue;
+                  const newCursorPos = start + 1;
+                  input.setSelectionRange(newCursorPos, newCursorPos);
+                  
+                  // 触发input事件
+                  const inputEvent = new Event('input', { bubbles: true });
+                  input.dispatchEvent(inputEvent);
+                }
+                // 英文小数点不做任何处理，让NumberInput自己处理
+              }}
+
+            />
           </NumberInput>
         </Td>
       );
     }
 
     return (
-      <Td py={2} height="48px" verticalAlign="middle">
+      <Td py={1} height="36px" verticalAlign="middle">
         <Input
           value={editingPreset?.[field] as string || ''}
           onChange={(e) => setEditingPreset(prev => prev ? { ...prev, [field]: e.target.value } : null)}
-          size="sm"
-          height="32px"
+          size="xs"
+          height="28px"
         />
       </Td>
     );
@@ -374,9 +424,6 @@ const BoxPresetEditor: React.FC<BoxPresetEditorProps> = ({
                 💡 提示：所有更改会自动保存到API，修改后会自动同步到服务器
               </Text>
             </Box>
-            <Button colorScheme="blue" mr={3} onClick={handleSaveAll}>
-              保存所有更改
-            </Button>
             <Button variant="ghost" onClick={onClose}>
               关闭
             </Button>

@@ -91,7 +91,8 @@ function ContainerFieldItem({ idx, control, remove, boxPresets }: {
           label="数量"
           name={`containers.${idx}.qty`}
           control={control}
-          options={{ valueAsNumber: true, min: 1, required: true }}
+          type="number"
+          options={{ min: 1, required: true }}
         />
       </HStack>
       <HStack mt="1">
@@ -122,7 +123,9 @@ function ContainerFieldItem({ idx, control, remove, boxPresets }: {
             label="最大重量 (kg)"
             name={`containers.${idx}.maxWeight`}
             control={control}
-            options={{ valueAsNumber: true, min: 0 }}
+            type="number"
+            step="0.01"
+            options={{ min: 0 }}
             placeholder="请输入最大重量"
           />
         )}
@@ -133,7 +136,8 @@ function ContainerFieldItem({ idx, control, remove, boxPresets }: {
             label="最大数量"
             name={`containers.${idx}.maxQuantity`}
             control={control}
-            options={{ valueAsNumber: true, min: 1 }}
+            type="number"
+            options={{ min: 1 }}
             placeholder="请输入最大数量"
           />
         )}
@@ -144,14 +148,18 @@ function ContainerFieldItem({ idx, control, remove, boxPresets }: {
           label="外箱净重 (kg)"
           name={`containers.${idx}.containerNetWeight`}
           control={control}
-          options={{ valueAsNumber: true, min: 0 }}
+          type="number"
+          step="0.01"
+          options={{ min: 0 }}
         />
         <Field
           flex="1"
           label="外箱毛重 (kg)"
           name={`containers.${idx}.containerGrossWeight`}
           control={control}
-          options={{ valueAsNumber: true, min: 0 }}
+          type="number"
+          step="0.01"
+          options={{ min: 0 }}
         />
       </HStack>
       <Box mt="1">
@@ -161,21 +169,27 @@ function ContainerFieldItem({ idx, control, remove, boxPresets }: {
             label="长度"
             name={`containers.${idx}.dim.0`}
             control={control}
-            options={{ valueAsNumber: true, min: 1, required: true }}
+            type="number"
+            step="0.01"
+            options={{ min: 1, required: true }}
           />
           <Field
             flex="1"
             label="宽度"
             name={`containers.${idx}.dim.1`}
             control={control}
-            options={{ valueAsNumber: true, min: 1, required: true }}
+            type="number"
+            step="0.01"
+            options={{ min: 1, required: true }}
           />
           <Field
             flex="1"
             label="高度"
             name={`containers.${idx}.dim.2`}
             control={control}
-            options={{ valueAsNumber: true, min: 1, required: true }}
+            type="number"
+            step="0.01"
+            options={{ min: 1, required: true }}
           />
         </HStack>
         <HStack mt="1">
@@ -184,7 +198,9 @@ function ContainerFieldItem({ idx, control, remove, boxPresets }: {
             label="厚度"
             name={`containers.${idx}.thickness`}
             control={control}
-            options={{ valueAsNumber: true, min: 0 }}
+            type="number"
+            step="0.01"
+            options={{ min: 0 }}
             placeholder="默认为0"
           />
         </HStack>
