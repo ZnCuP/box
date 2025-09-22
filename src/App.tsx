@@ -1,7 +1,7 @@
 // 主应用组件 - 3D装箱可视化
 import { Box, Button, Flex } from "@chakra-ui/react";
 import { Canvas } from "@react-three/fiber";
-import { Center, Environment, OrbitControls, Edges } from "@react-three/drei";
+import { Center, OrbitControls, Edges } from "@react-three/drei";
 import {
   AlgoResult,
   Container as AlgoContainer,
@@ -514,5 +514,18 @@ function BoxItem(props: { data: AlgoItem }) {
 }
 
 function Env() {
-  return <Environment preset="warehouse" background blur={0.65} />;
+  return (
+    <>
+      {/* 使用本地光照替代外部HDR资源 */}
+      <ambientLight intensity={0.4} />
+      <directionalLight 
+        position={[10, 10, 5]} 
+        intensity={1} 
+        castShadow 
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+      />
+      <pointLight position={[-10, -10, -10]} intensity={0.3} />
+    </>
+  );
 }
